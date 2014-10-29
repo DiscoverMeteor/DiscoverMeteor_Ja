@@ -119,63 +119,70 @@ Meteorのパッケージを文脈でつづれというのであれば、明確�
 
 -**Local packages** はあなたが自分でカスタマイズできるパッケージで、`/packages`のディレクトリーに入れておけます。
 
-- **NPM packages** (Node.js パッケージモジュール) は Node.js　パッケージです。Meteorと一緒にBoxの外では作動し合いませんが、以前のパッケージタイプであれば、使用可能であるかもしれません。
- Although they don't work out of the box with Meteor, they *can* be used by the previous  
+- **NPM packages** (Node.js パッケージモジュール) は Node.js　パッケージのことです。Meteorと一緒にBoxの外では作動し合いませんが、以前のパッケージタイプであれば、使用可能であるかもしれません。
 
 <% end %>
 
-### The File Structure of a Meteor App
+### Meteorアプリのファイル構成
 
-Before we begin coding, we must set up our project properly. To ensure we have a clean build, open up the `microscope` directory and delete `microscope.html`, `microscope.js`, and `microscope.css`. 
+コーディングを始める前に、私たちはプロジェクトのプロパティーを設定する必要があります。まずは綺麗に構築ができるよう`microscope`ディレクトリを開け`microscope.html`と、 `microscope.js`, そして `microscope.css`を削除します。 
 
-Next, create five root directories inside `/microscope`: `/client`, `/server`, `/public`, `/lib`, and `/collections`, and we'll also create empty `main.html` and `main.js` files inside `/client`. Don't worry if this breaks the app for now, we'll start filling in these files in the next chapter. 
+次に、４つのルートディレクトリを `/microscope`: `/client`, `/server`, `/public`, `/lib`, そして `/collections`の内側に作成します。
 
-We should mention that some of these directories are special. When it comes to files, Meteor has a few rules:
+その次に、空の`main.html` と `main.js` の両方のファイルを`/client`の中に作成します。今のこの作業がもしもアプリを破壊しているのであっても
+心配しないでください。次の章でこれらのファイルを埋めていきます。
 
-- Code in the `/server` directory only runs on the server.
-- Code in the `/client` directory only runs on the client.
-- Everything else runs on both the client and server.
-- Files in `/lib` are loaded before anything else.
-- Any `main.*` file is loaded after everything else.
-- Your static assets (fonts, images, etc.) go in the `/public` directory. 
+このいくつかのディレクトリは特別であることをここで述べさせていただきます。コーディングを実行していくのにあたり、Meteorにはいくつかのルールがあります：
 
-Note that although Meteor has these rules, it doesn't really force you to use any predefined file structure for your app if you don't want to. So the structure we suggest is just our way of doing things, not a rule set in stone. 
+- `/server` ディレクトリにあるコードはサーバー上のみ実行します。
+- `/client` ディレクトリにあるコードはクライアントの上のみ実行します。
+- 他のものはみんなクライアントとサーバー上の両方で実行します。
+- フォントや画像などの静的なアセットは`/public`ディレクトリに行きます。
 
-We encourage you to check out the [official Meteor docs](http://docs.meteor.com/#structuringyourapp) if you want more details on this.
+それから、Meteorがあなたのファイルをロードする順番をどう決めているかを知ることはとても役に立ちます。
+- `/lib`にあるファイルは何よりも*先にロードされます。
+- どの`main.*` ファイルは何よりも*後にロードされます。
+- その他のものはファイル名に基づいてアルファベット順にロードされます。
+
+これらのルールがMeteorにはあるものの、もしあなたが望まないのでれば、このファイル構成の定義は強制されません。なので、この構成は私たちが提案するものであり、決定事項ではありません。
+
+これについてもっと詳しく知りたければ、[official Meteor　docs](http://docs.meteor.com/#structuringyourapp)を一読することをお勧めします。
 
 <% note do %>
 
-### Is Meteor MVC?
+###MeteorはMVC?
 
-If you're coming to Meteor from other frameworks such as Ruby on Rails, you might be wondering if Meteor apps adopt the MVC (Model View Controller) pattern. 
+Ruby on Railなど、他のフレームワークからMeteorに移って来ているなら人、Meteorアプリは MVC (Model View Controller)パターンを採用しているのかと疑問に思っているかもしれません。 
 
-The short answer is no. Unlike Rails, Meteor doesn't impose any predefined structure to your app. So in this book we'll simply lay out code in the way that makes the most sense to us, without worrying too much about acronyms.
+簡単に言うと答えはノーです。Railと違ってMeteorはあなたのアプリに対して定義づけされた構成を課してはいません。ですので、この本の中ではアクロニム（頭文字）について深く考えなくても、自分が一番理解ができるよう簡単にコードをレイアウトします。
 
 <% end %>
 
 ### No public?
 
-OK, we lied. We don't actually need the `public/` directory for the simple reason that Microscope doesn't use any static assets! But since most other Meteor apps are going to include at least a couple images, we thought it was important to cover it too. 
+はい、うそついてました。Microscopeは静的アセットを使わないため`public/` ディレクトリは実際には必要ないのです。しかし、他のほとんどのMEteorアプリは少なくとも何枚かの画像を含んでいるため、私たちはこれを含むのことは必要だと考えました。
 
-By the way, you might also notice a hidden `.meteor` directory. This is where Meteor stores its own code, and modifying  things in there is usually a very bad idea. In fact, you don't really ever need to look in this directory at all. The only exceptions to this are the `.meteor/packages` and `.meteor/release` files, which are respectively used to list your smart packages and the version of Meteor to use. When you add packages and change Meteor releases, it can be helpful to check the changes to these files.
+ところで、もう一つ、隠れ`.meteor` ディレクトリについて気づかれたのではないでしょうか。Meteor自身のコードがここに格納されていますので、これに手を加えることは大体悲惨な結果を迎えることになります。事実このディレクトリは全く見る必要のないものです。唯一、使われているMeteorのバージョンと、あなたのスマートパッケージのリストでそれぞれが使われている
+'.meteor/packages` と `.meteor/release`ファイルは例外となります。パッケージ追加したりとMeteorのリリースを変えたりするときはこれらのファイルの変更を確認することは役に立ちます。
 
 <% note do %>
 
-### Underscores vs CamelCase
+### アンダーバー 対 キャメル方式
 
-The only thing we'll say about the age-old underscore (`my_variable`) vs camelCase (`myVariable`) debate is that it doesn't really matter which one you pick as long as you stick to it. 
+古めかしいアンダーバー(`my_variable`) 対 キャメル方式(`myVariable`)の論争について一つ言及するとしたら、常に同じ様式を取っていればどちらを使おうと全く問題ありません。
 
-In this book, we're using camelCase because it's the usual JavaScript way of doing things (after all, it's JavaScript, not java_script!). 
+この本では、JavaScriptで通常使われている様式のキャメル方式を使っています。(ところで、表記はJavaScriptですよ、java_scriptではないですよ!). 
 
-The only exceptions to this rule are file names, which will use underscores (`my_file.js`), and CSS classes, which use hyphens (`.my-class`). The reason for this is that in the filesystem, underscores are most common, while the CSS syntax itself already uses hyphens (`font-family`, `text-align`, etc.).
+ここでの唯一のルールは、ファイル名はアンダーバー(`my_file.js`)で表記し、CSSのクラスはハイフン(`.my-class`)で表記するという点です。理由としては、アンダーバーはファイルシステムで一番採用されている様式であり、CSSシンタックスではすでにハイフン(`font-family`, `text-align`, etc.)が取り入れられているからです。
 
 <% end %>
 
-### Taking Care of CSS
+### CSSの扱いについて
 
-This book is not about CSS. So to avoid slowing you down with styling details, we've decided to make the whole stylesheet available from the start, so you don't need to worry about it ever again. 
+この本はCSSについての本ではありません。ですので、スタイリングについて詳しく述べ、あなたの足を引き止めことを避ける為、最初から全部のスタイルシートを作成しました。
 
-CSS automatically gets loaded and minified by Meteor, so unlike other static assets it goes into `/client`, not `/public`. Go ahead and create a `client/stylesheets/` directory now, and put this `style.css` file inside it:
+
+CSSはMeteorによってMinify化（ファイル圧縮）を自動でロードするようになっています。そうすれば違う他の静的アセットが `/public`でなく`/client`の中に行きます。それでは今、`client/stylesheets/` ディレクトリをd作成して、この`style.css` ファイルを中に入れてください。
 
 ~~~css
 .grid-block, .main, .post, .comments li, .comment-form {
@@ -349,9 +356,9 @@ body {
 
 <% note do %>
 
-### A Note on CoffeeScript
+###CoffeeScriptのノート
 
-In this book we'll be writing in pure JavaScript. But if you prefer CoffeeScript, Meteor has you covered. Simply add the CoffeeScript package and you'll be good to go:
+この本では、純粋なJavaScriptを書いていきます。しかし、一方でCoffeeScriptを好むのであれば、Meteorはカバーします。CoffeeScript パッケージを追加して、準備オッケーです。:
 
 `meteor add coffeescript`
 
