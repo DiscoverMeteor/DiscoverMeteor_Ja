@@ -4,103 +4,132 @@ slug: github
 date: 0003/01/02
 number: 3.5
 sidebar: true
-contents: Learn how to use GitHub to follow along with the book.
+contents: 本書を理解する上で、GitHubの使い方を学びます。
 paragraphs: 32
 ---
 
-////
+GitHub は Git というバージョン管理システムを基にした、オープンソースプロジェクト向けのソーシャルリポジトリです。（？？？）
+GitHub の基本的な役割は、コードを共有してプロジェクトのコラボレーションをしやすくすることです。
+また、GitHub は素晴らしい学習ツールでもあります。
+この補足事項では、Discover Meteor を理解する上での GitHub の使い方を学びます。
 
-////
+この補足事項では、Git や GitHub について知らない読者の方を想定しています。
+もしあなたがどちらも使いこなせるのなら、この章まで飛ばしても大丈夫です。
 
-### Being Committed
+### コミットをする
 
-////
+git リポジトリの基本的なワーキングブロック（？？？）は、コミットです。
+コミットとは、一定時間のコード（？？？）の状態のスナップショットと考えることができます。
 
-////
+Microscope の完成したコードを（give？）　の代わりに
+あらゆる面でスナップショットを撮って、オンラインの GitHub 上で見ることができます。（？？？）
 
-////
+たとえば、前章でのコミットは次のようになります：
 
 <%= screenshot "s3-1", "A Git commit as shown on GitHub." %>
 
-////
+ここで見ているのは、post_item.js ファイルの “diff”(“difference”) です。
+これはコミットによって取り込まれた変化です。
+この場合、ゼロから post_item.js ファイルを作ったため、背景が緑色に表示されています。
 
-////
+後々本書で出てくる例を見比べてみましょう
 
 <%= screenshot "s3-2", "Modifying code." %>
 
-////
+今回は修正した行の背景だけが緑色になっています。
 
-////
+もちろん、コードを加えたり修正するだけでなく、コードを削除することもあります。
 
 <%= screenshot "s3-3", "Deleting code." %>
 
-////
+これが GitHub の最初の使い方です。何か変更されたのか、一目瞭然です。
 
-### Browsing A Commit's Code
+### コミットされたコードを見る
 
-////
+Git のコミット表示は　このコミットに（include？）された変化を表示していますが、
+　変化していないファイルを見たいという時は、
+　コードが（at this stage of the process？）で（？？？）
 
-////
+またしても GitHub が（comes through？）します。
+　コミットページで、Browse code ボタンをクリックしましょう。
 
 <%= screenshot "s3-5", "The Browse code button." %>
 
-////
+これで（specific？＝特定の？）コミットを示すリポジトリにアクセスしました。　
 
 <%= screenshot "s3-6", "The repository at commit 3-2." %>
 
-////
+GitHubは私たちがGitHubを見ている時に、多くの視覚的なヒントを伝えません。
+しかし、「普通」の（master view？）を比較して、ファイル構造が違っていることが一目でわかります。
 
 <%= screenshot "s3-7", "The repository at commit 14-2." %>
 
-### Accessing A Commit Locally
+### ローカルコミットへのアクセス
 
-////
+これまでオンラインの GitHub で、どのようにコミットされたコードを見るのか学習しました。
+一方で、ローカル環境で同じことしたいときはどうしたらよいのでしょうか？
+たとえば、現在のプロセスで想定通りにアプリが動くかどうか確かめるための特定のコミットで、ローカル環境でアプリを動かしたいといましょう。　（？？？）
 
-////
-
+これをするために、git コマンドライン（utility？）を使って本書での最初の一歩を進みましょう。　
+まず第一に、Git がインストールされているか確認します。
+それから次のようにして Microscope リポジトリをクローン（言い換えると、ローカルにコピーをダウンロード）します。
+　
 ~~~bash
 $ git clone git@github.com:DiscoverMeteor/Microscope.git github_microscope
 ~~~
 
-////
-
-////
+この github_microscope は（at the end？）では、アプリをクローンして入れておくローカルディレクトリの名前です。　
+すでに microscope ディレクトリが存在している（Assuming？＝場合は？）、
+他の名前を（pick？＝選びます？）（GitHub リポジトリと同じ名前を使う必要はありません）。
+　
+git コマンドライン（utility？）を使い始めるために、リポジトリ（into？）cd しましょう。
 
 ~~~bash
 $ cd github_microscope
 ~~~
 
-////
+私たちは　GitHub からリポジトリをクローンしたので、
+アプリのすべてのコードをダウンロードしました。つまり、私たちは（ last ever？＝最後に？）コミットされたコードを見ています。
 
-////
+ありがたいことに、（ other ones？）に影響を及ぼさずに　時間の流れをさかのぼって
+特定のコミットを（“check out” ？）する方法があります。では、試してみましょう。
 
 ~~~bash
 $ git checkout chapter3-1
 Note: checking out 'chapter3-1'.
 
-You are in 'detached HEAD' state. You can look around, make experimental
-changes and commit them, and you can discard any commits you make in this
-state without impacting any branches by performing another checkout.
+あなたは'detached HEAD'状態になっています。
+　周りを見渡して、実験的に変化させて、（them？）をコミットします。
+　すると、この状態でどのようなコミットも
+　他の checkout をすることで、どのようなブランチにも 影響を与えずに、
+　捨てることができます。
 
-If you want to create a new branch to retain commits you create, you may
-do so (now or later) by using -b with the checkout command again. Example:
+コミットを保持するために新しいブランチoこを作りたいという場合、
+　再び checkout コマンドで -b を使って行います。
 
   git checkout -b new_branch_name
 
 HEAD is now at a004b56... Added basic posts list template and static data.
 ~~~
 
-////
+私たちは　Git によって（“detached HEAD”？）状態を知ることができます。
+Gitが関係する限り、私たちは過去のコミットを見れるだけで、修正することはできません。
+これは水晶の玉で過去を調べる魔法使いのようなものだと考えることができます。
 
-////
+（Git には　過去のコミットを変えるコマンドがあります。
+　　これは時間の流れをさかのぼって、蝶を踏みつけるタイムトラベラーのようなものです。
+　　しかし、この点はこの短い紹介の範囲を超えてしまいます。）
 
-////
+なぜ（chapter3-1？）をタイピングできるのかというと、
+　私たちは（correct chapter marker？）で Microscope のすべてのコミットを（ pre-tagged？）したからです。
+　（this weren't the case？）、最初にコミットのハッシュか（unique identifier？）を見つける必要があります。　
 
-////
+またしても、 GitHub は私たちの生活を（？？？）しやすくしてくれました。
+　（as shown here？＝この図のように？）、青いコミットヘッダーボックスの右下の隅にコミットハッシュを見つけることができます。　　
 
 <%= screenshot "s3-4", "Finding a commit hash." %>
 
-////
+タグの代わりに　ハッシュを使ってみましょう。
 
 ~~~bash
 $ git checkout c7af59e425cd4e17c20cf99e51c8cd78f82c9932
@@ -108,7 +137,8 @@ Previous HEAD position was a004b56... Added basic posts list template and static
 HEAD is now at c7af59e... Augmented the postsList route to take a limit
 ~~~
 
-////
+最後に、水晶の玉を見ることをやめたくなって、現在に戻りたくなったらどうするのでしょうか？
+　私たちは Git に（master branch？）をチェックしたいと伝えます。
 
 ~~~bash
 $ git checkout master
@@ -116,24 +146,30 @@ $ git checkout master
 
 ### Historical Perspective
 
-////
+これはもうひとつのよくある状況です：　あなたがファイルを見ていると、今まで見たことのない変化に気づきました。
+　（The thing is,？＝要するに？）、あなたはいつファイルを変更させたか覚えていません。
+　（right one？）を見つけるまで、一つ一つコミットを見ていく　（？？？）
+　しかし、　GitHub の History 機能でもっと簡単にする方法があります。
 
-////
+最初に、GitHub でリポジトリの　ファイルにアクセスして、“History” ボタンを見つけます。
 
 <%= screenshot "s3-8", "GitHub's History button." %>
 
-////
+このファイルに影響を与えたすべてのコミットを整ったリストで（have？）します。
 
 <%= screenshot "s3-9", "Displaying a file's history." %>
 
 ### The Blame Game
 
-////
-
+締めくくりに、Blame を見ていきましょう。
+　
 <%= screenshot "s3-10", "GitHub's Blame button." %>
 
-////
-
+（neat view？）は　誰がファイルとコミットを変更したのか行ごとに、表示します。
+　（言い換えると、うまくいかなくなった時に誰のせいかということがわかります。）
+　
 <%= screenshot "s3-11", "GitHub's Blame view." %>
 
-////
+Git と GitHub はかなり複雑なツールです。そのため、１つの章ですべてのことをカバーすることは見込めません。
+　実際のところ、これで私たちは　やっと Git と GitHub でできることを少しだけ学ぶことができました。　（？？？）
+　とはいえ、本書の残りを理解していく上でいくらか役立つとわかるでしょう。（？？？）
