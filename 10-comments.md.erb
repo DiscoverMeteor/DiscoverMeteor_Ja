@@ -8,9 +8,12 @@ contents: Display existing comments.|Add a comment posting form.|Learn how to lo
 paragraphs: 34
 ---
 
-////
+ ソーシャルニュースサイトの目的は　ユーザーのコミュニティを作ることであり、
+ ユーザー同士が話し合える方法を提供しなければ、ユーザーコミュニティを作ることは難しいでしょう。
+ この章では、コメントを追加します！
 
-////
+　では、コメントを保存するための新しいコレクションを作って、
+　基本的なテストデータをコレクションに入れることから始めていきましょう。
 
 ~~~js
 Comments = new Meteor.Collection('comments');
@@ -18,10 +21,10 @@ Comments = new Meteor.Collection('comments');
 <%= caption "collections/comments.js" %>
 
 ~~~js
-// Fixture data 
+// Fixture data
 if (Posts.find().count() === 0) {
   var now = new Date().getTime();
-  
+
   // create two users
   var tomId = Meteor.users.insert({
     profile: { name: 'Tom Coleman' }
@@ -31,7 +34,7 @@ if (Posts.find().count() === 0) {
     profile: { name: 'Sacha Greif' }
   });
   var sacha = Meteor.users.findOne(sachaId);
-  
+
   var telescopeId = Posts.insert({
     title: 'Introducing Telescope',
     userId: sacha._id,
@@ -39,7 +42,7 @@ if (Posts.find().count() === 0) {
     url: 'http://sachagreif.com/introducing-telescope/',
     submitted: now - 7 * 3600 * 1000
   });
-  
+
   Comments.insert({
     postId: telescopeId,
     userId: tom._id,
@@ -47,7 +50,7 @@ if (Posts.find().count() === 0) {
     submitted: now - 5 * 3600 * 1000,
     body: 'Interesting project Sacha, can I get involved?'
   });
-  
+
   Comments.insert({
     postId: telescopeId,
     userId: sacha._id,
@@ -55,7 +58,7 @@ if (Posts.find().count() === 0) {
     submitted: now - 3 * 3600 * 1000,
     body: 'You sure can Tom!'
   });
-  
+
   Posts.insert({
     title: 'Meteor',
     userId: tom._id,
@@ -63,7 +66,7 @@ if (Posts.find().count() === 0) {
     url: 'http://meteor.com',
     submitted: now - 10 * 3600 * 1000
   });
-  
+
   Posts.insert({
     title: 'The Meteor Book',
     userId: tom._id,
@@ -75,7 +78,7 @@ if (Posts.find().count() === 0) {
 ~~~
 <%= caption "server/fixtures.js" %>
 
-////
+　新しく作ったコレクションにパブリッシュとサブスクリプションをすることを忘れずに。
 
 ~~~js
 Meteor.publish('posts', function() {
@@ -93,7 +96,7 @@ Meteor.publish('comments', function() {
 Router.configure({
   layoutTemplate: 'layout',
   loadingTemplate: 'loading',
-  waitOn: function() { 
+  waitOn: function() {
     return [Meteor.subscribe('posts'), Meteor.subscribe('comments')];
   }
 });
@@ -103,15 +106,23 @@ Router.configure({
 
 <%= commit "10-1", "Added comments collection, pub/sub and fixtures." %>
 
-////
+　このテストデータを（trigger？＝トリガー）するために、データベースをクリアするmeteor resetを使う必要があります。
+　リセット後に、新しいアカウントを作って（log back in＝ログインし直すこと？）を作ることを忘れずに！
 
-////
+　最初に、私たちは完全に偽物の二人のユーザーを作りました。
+　その時には、データベースに二人のデータを挿入して、あとでデータベースからデータを選択するために id を使います。
+　それから私たちは　最初の投稿に　ユーザーがお互いにコメントを追加しました。投稿にコメントをリンクして（postIdを使って）
+　この時は、postIdを使って投稿とuserIdを使ってユーザーへのコメントにリンクしています。
+　私たちは　　（a denormalized field？＝非正規化したフィールドである？）authorと一緒に
+　投稿日時と本文を各コメントに追加しました。　
 
-////
+　また、私たちはルーターを増やしてコメントと投稿を待つようにします。　
 
-### Displaying comments
+### Displaying comments　　コメントを表示する
 
-////
+　データベースにコメントを入れるのは良いのですが、私たちはディスカッションページにコメントを表示する必要があります。
+　そろそろこのプロセスに慣れてきているころでしょうか。
+　というのも、あなたはこのステップに関連したアイデアをすでに持っているからです。
 
 ~~~html
 <template name="postPage">
@@ -137,9 +148,13 @@ Template.postPage.helpers({
 <%= caption "client/views/posts/post_page.js" %>
 <%= highlight "2~4" %>
 
-////
-
-////
+　私たちは投稿のテンプレート内に　{{#each comments}} ブロックを置いたので、
+　thisはcomments ヘルパー内の投稿です。
+　関連するコメントを見つけるために、
+　私たちは　postId 属性を使って投稿にリンクされたコメントをチェックします。
+　
+　ヘルパーと Spacebars を学習したことを考えると、コメントをレンダリングすることはかなり単純です。
+　すべてのコメントの情報を格納するために、私たちは views 内に新しく comments  ディレクトリを作りました。　　　
 
 ~~~html
 <template name="comment">
@@ -154,8 +169,10 @@ Template.postPage.helpers({
 ~~~
 <%= caption "client/views/comments/comment.html" %>
 
-////
-
+　（あなたがUNIX のタイムスタンプと16進数のカラーコードをやすやすと理解できる人間でない場合は、）
+　データが（submitted？）されたフォーマットに　人間が読むことができるフォーマットの（in？＝中で？）　（？？？）
+　テンプレートヘルパーをセットアップしましょう。
+　
 ~~~js
 Template.comment.helpers({
   submittedText: function() {
@@ -165,7 +182,8 @@ Template.comment.helpers({
 ~~~
 <%= caption "client/views/comments/comment.js" %>
 
-////
+Then, we'll show the number of comments on each post:
+　それから、それぞれの投稿にコメントの数を表示します。
 
 ~~~html
 <template name="postItem">
@@ -185,7 +203,8 @@ Template.comment.helpers({
 <%= caption "client/views/posts/post_item.html" %>
 <%= highlight "6,7" %>
 
-////
+And add the commentsCount helper to our postItem manager:
+　（And ？）postItemマネージャーに　commentsCount helperを追加します。
 
 ~~~js
 Template.postItem.helpers({
@@ -207,26 +226,27 @@ Template.postItem.helpers({
 
 <%= commit "10-2", "Display comments on `postPage`." %>
 
-////
+　これでテストコメントが表示され、このようになっているはずです。
 
 <%= screenshot "10-1", "Displaying comments" %>
 
 ### Submitting Comments
 
-////
+　　ユーザーが新しいコメント作るための方法を追加します。
+　　私たちがたどるプロセスはユーザーが新しい投稿を作成する許可する方法にとても似ています。　
 
-////
+　私たちは各投稿の下にコメント投稿ボックス を作ることから始めていきましょう。　
 
 ~~~html
 <template name="postPage">
   {{> postItem}}
-  
+
   <ul class="comments">
     {{#each comments}}
       {{> comment}}
     {{/each}}
   </ul>
-  
+
   {{#if currentUser}}
     {{> commentSubmit}}
   {{else}}
@@ -237,7 +257,7 @@ Template.postItem.helpers({
 <%= caption "client/views/posts/post_page.html" %>
 <%= highlight "11~15" %>
 
-////
+　それから　コメントフォームテンプレートを作ります。
 
 ~~~html
 <template name="commentSubmit">
@@ -260,19 +280,20 @@ Template.postItem.helpers({
 
 <%= screenshot "10-2", "The comment submit form" %>
 
-////
+　コメントを投稿するために、
+　　私たちは postSubmit マネージャと同じ方法で commentSubmit マネージャ内で comment メソッドを呼び出します。　　
 
 ~~~js
 Template.commentSubmit.events({
   'submit form': function(e, template) {
     e.preventDefault();
-    
+
     var $body = $(e.target).find('[name=body]');
     var comment = {
       body: $body.val(),
       postId: template.data._id
     };
-    
+
     Meteor.call('comment', comment, function(error, commentId) {
       if (error){
         throwError(error.reason);
@@ -285,7 +306,9 @@ Template.commentSubmit.events({
 ~~~
 <%= caption "client/views/comments/comment_submit.js" %>
 
-////
+　以前 postをサーバーサイドでMeteor メソッドをセットアップしたように、
+　コメントを作るためにcomment Meteor メソッドをセットアップして、
+　すべてがちゃんとしているかチェックして、最後に新しいコメントをcommentsコレクションに挿入します。
 
 ~~~js
 Comments = new Meteor.Collection('comments');
@@ -297,19 +320,19 @@ Meteor.methods({
     // ensure the user is logged in
     if (!user)
       throw new Meteor.Error(401, "You need to login to make comments");
-      
+
     if (!commentAttributes.body)
       throw new Meteor.Error(422, 'Please write some content');
-      
+
     if (!post)
       throw new Meteor.Error(422, 'You must comment on a post');
-    
+
     comment = _.extend(_.pick(commentAttributes, 'postId', 'body'), {
       userId: user._id,
       author: user.username,
       submitted: new Date().getTime()
     });
-    
+
     return Comments.insert(comment);
   }
 });
@@ -319,21 +342,34 @@ Meteor.methods({
 
 <%= commit "10-3", "Created a form to submit comments." %>
 
-////
+　ここでは手が込んだことは何もしていません。
+　ただユーザーがログインしているか、コメントに本文があるか、
+　コメントが投稿にリンクされているかチェックしています。
 
 ### Controlling the Comments Subscription
 
-////
+　今のところ、私たちはすべての投稿にすべてのコメントをパブリッシュしています。
+　これは　ちょっと無駄が多いように見えます。
+　結局、私たちはどんなときでもコメントデータの小さな一部分を使うだけなので、どのコメントをパブリッシュさせるかコントロールするためにパブリケーションとサブスクリプションを改善していきましょう。　　
 
-////
+　この点を考えると、コメントのパブリケーションにサブスクライブする必要のある時というのは、ユーザーが投稿の個別ページにアクセスする時だけなので、
+　私たちは特定の投稿に関係するコメント部分だけをを読み込む必要があります。
 
-////
+　最初のステップとして、私たちはコメントにサブスクライブする方法を変えていきます。
+　今まで私たちはルーターレベルでサブスクライブしていました。
+　つまり、私たちはルーターが初期化するときにすべてのデータを一度に読み込んでいます。
 
-////
+　しかし、私たちはサブスクリプションがパスのパラメータで決めるようにしたいのです。
+　パラメータはどの時点でも明確に変えることができます。
+　そのため、私たちはサブスクリプションコードをルーターレベルからルートレベルに 移行する必要があります。
 
-////
+　これは別の結果です：アプリを初期化する時にデータをロードするかわりに、
+　今の私たちはルートにヒットした時はいつもで　（ it？）をロードしています。
+　これはアプリ内を見ている間に（get loading times？）します、
+　しかし、これはあなたが永遠にすべてのデータセットを（front-load？）するつもりでない限り、避けられないマイナス面です。
 
-////
+　最初に、私たちは configureブロックで Meteor.subscribe('comments')を削除して
+　コメントをあらかじめ読み込むことをストップします：
 
 ~~~js
 Router.map(function() {
@@ -355,7 +391,7 @@ Router.map(function() {
 <%= caption "lib/router.js" %>
 <%= highlight "7~9" %>
 
-////
+　それから、新たにルートレベルの waitOn 関数を追加します。
 
 ~~~js
 Meteor.publish('posts', function() {
@@ -371,17 +407,30 @@ Meteor.publish('comments', function(postId) {
 
 <%= commit "10-4", "Made a simple publication/subscription for comments." %>
 
-////
+　私たちは this.params._id をサブスクリプションへの引数として渡していることにお気づきかと思います。
+　そのため、現在の投稿に帰属しているコメントへのデータセットを制限するために新しい情報を使いましょう。　
 
 <%= screenshot "10-3", "Our comments are gone!" %>
 
+　１つだけ問題があります：　（homepage＝ホーム？）に戻るときに、（it？）はすべての投稿でコメントは0だと言っています。
+
 ### Counting Comments
 
-////
+　この理由はすぐに明らかになります：
+　私たちは
+　投稿のコメントのひとつをロードするだけなので、私たちはpost_itemマネージャ内のcommentsCountヘルパーで、
+　Comments.find({postId: this._id})を呼び出す時に、
+　Meteor は結果を提供するための必要なクライアントサイドのデータを見つけることができません。
 
-////
+　この問題に対処する最も良い方法は、投稿にコメントの数を非正規化？）することです。
+　（これが何を意味しているのか自信がなくでも、問題ありません。次の補足事項でカバーします！）
+　　　これまで見てきたように、コードにちょっとだけ複雑なものを追加していますが、
+　　投稿リストを表示する上で、すべてのコメントにパブリッシュする必要がなくなったことで私たちが得るパフォーマンスベネフィットには、それだけの価値があります。
 
-////
+　私たちはpostデータ構造に commentsCountを追加することで　これを実現します。
+　はじめに、私たちは投稿のテストデータをアップデートします。
+　（さらに、これをリロードするために meteor reset をします。
+　後でユーザーアカウントを作り直すことを忘れずに。）：
 
 ~~~js
 var telescopeId = Posts.insert({
@@ -404,13 +453,13 @@ Posts.insert({
 ~~~
 <%= caption "server/fixtures.js" %>
 
-////
+　次に、すべての新しい投稿が0コメントからスタートするようにします。：　
 
 ~~~js
 // pick out the whitelisted keys
 var post = _.extend(_.pick(postAttributes, 'url', 'title', 'message'), {
-  userId: user._id, 
-  author: user.username, 
+  userId: user._id,
+  author: user.username,
   submitted: new Date().getTime(),
   commentsCount: 0
 });
@@ -419,7 +468,8 @@ var postId = Posts.insert(post);
 ~~~
 <%= caption "collections/posts.js" %>
 
-////
+　それから、MongoDB の $inc 演算子を使うことで新しいコメントを作る時に、
+　関係する commentsCount を更新します。（これで数値に関するフィールドを１つずつ増加させます。）：　
 
 ~~~js
 // update the post with the number of comments
@@ -429,8 +479,10 @@ return Comments.insert(comment);
 ~~~
 <%= caption "collections/comments.js "%>
 
-////
+　最後に、このフィールドは今、投稿から直接使うことができるので、
+　client/views/posts/post_item.js から commentsCount ヘルパーを削除することができます。
 
 <%= commit "10-5", "Denormalized the number of comments into the post." %>
 
-////
+　これでユーザー同士で話し合えるようになったので、ユーザーが新しいコメントに気づかないとしたら、残念なことです。
+　なんと驚くことに（？？？）、次の章はこれを防ぐために通知を実装する方法を説明します。
