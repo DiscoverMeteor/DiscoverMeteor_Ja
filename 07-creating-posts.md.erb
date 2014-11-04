@@ -7,13 +7,14 @@ contents: Learn how to submit a post client-side.|Implement a simple security ch
 paragraphs: 60
 ---
 
-////
+これまでで、私たちはコンソールでデータベースを呼び出す Posts.insert を使うことで、簡単に投稿を作成する方法を見てきました。
+しかし、ユーザーがコンソールを開いて新しい投稿をすることはないでしょう。
 
-////
+結局のところ、私たちはユーザーがアプリに新しい記事を投稿できるように、ちょっとしたユーザーインターフェースを作る必要があります。
 
-### Building The New Post Page
+### 新たに投稿ページを作る
 
-////
+新しいページにルートを定義することから始めます。
 
 ~~~js
 Router.configure({
@@ -24,12 +25,12 @@ Router.configure({
 
 Router.map(function() {
   this.route('postsList', {path: '/'});
-  
+
   this.route('postPage', {
     path: '/posts/:_id',
     data: function() { return Posts.findOne(this.params._id); }
   });
-  
+
   this.route('postSubmit', {
     path: '/submit'
   });
@@ -38,11 +39,9 @@ Router.map(function() {
 <%= caption "lib/router.js" %>
 <%= highlight "13~15" %>
 
-////
+### ヘッダーへのリンクを追加する
 
-### Adding A Link To The Header
-
-////
+このルートを定義すると、私たちはヘッダーに投稿ページのリンクを追加することができます。
 
 ~~~html
 <template name="header">
@@ -69,7 +68,8 @@ Router.map(function() {
 <%= caption "client/views/includes/header.html" %>
 <%= highlight "11~16" %>
 
-////
+ルートを設定するということは、ユーザーが  /submit URLのウェブページを見ると
+Meteor が postSubmit テンプレートを表示するということです。では、テンプレートを書いていきましょう。
 
 ~~~html
 <template name="postSubmit">
@@ -93,7 +93,7 @@ Router.map(function() {
         <div class="controls">
             <textarea name="message" type="text" value=""/>
         </div>
-    </div> 
+    </div>
 
     <div class="control-group">
         <div class="controls">
@@ -106,27 +106,34 @@ Router.map(function() {
 ~~~
 <%= caption "client/views/posts/post_submit.html" %>
 
-////
+注釈：かなりマークアップしましたが、これは Twitter Bootstrap を使っているためです。
+form 要素だけは必要ですが、残りのマークアップはアプリの見た目を若干良くするために行っています。今はこのようになっているはずです。
 
 <%= screenshot "7-1", "The post submit form" %>
 
-////
+これでシンプルなフォームができました。私たちがこのフォームの動作について
+心配する必要はありません。
+フォームで submit イベントを受け取って、JavaScriptでデータを更新するためです。
+（Meteor アプリが機能しないJavaScriptを使った完全な非関数だと考えると、 （ a non-JS？）フォールバックを提供しても、意味がありません。）
 
-### Creating Posts
+### 投稿を作る
 
-////
+form の submit イベントにイベントハンドラをバインドしていきましょう。
+ボタンでの click イベントよりも、submit イベントを使うのがベストです。
+それは submit イベントはすべての投稿方法をカバーするためです。
+（たとえば、URL フィールドに（ hitting enter？）するようなものでも）
 
 ~~~js
 Template.postSubmit.events({
   'submit form': function(e) {
     e.preventDefault();
-    
+
     var post = {
       url: $(e.target).find('[name=url]').val(),
       title: $(e.target).find('[name=title]').val(),
       message: $(e.target).find('[name=message]').val()
     }
-    
+
     post._id = Posts.insert(post);
     Router.go('postPage', post);
   }
@@ -136,30 +143,44 @@ Template.postSubmit.events({
 
 <%= commit "7-1", "Added a submit post page and linked to it in the header." %>
 
-////
+この関数はさまざまなフォームフィールドの値を明確にするため、jQuery を使っています。　
+また、その結果から新しい投稿オブジェクトを追加します。
+私たちはブラウザが（doesn't go ahead and try to submit the form＝先に進まず、フォームから投稿しない？）ために、
+イベントハンドラへのイベント引数で preventDefault する必要があります。
 
-////
+最終的に、私たちは新しい投稿ページにルーティングすることができました。
+コレクションでの insert()関数はデータベースに挿入されたオブジェクトに生成された id を返します。
+（,which？）でルーターの go()関数は私たちがウェブで見るための URL を作り出します。
 
-////
+その結果、ユーザーは(submit？)にヒットして、投稿が作られ、
+ユーザーは瞬時に新しい投稿のディスカッションページに導かれます。
 
-### Adding Some Security
+### セキュリティを強化する
 
-////
+投稿を作るのは良いのですが、私たちはどんな人でも投稿を作れるようにしたくありません：ユーザーがログインをした上で投稿を行うようにしたいものです。　
+もちろん、私たちはログアウトしたユーザーから新しい投稿フォームを見えなくするところから始めていきます。
+もしかしたら、まだユーザーはブラウザーコンソールからログインせずに投稿を作ることができるかもしれません。　（and we can't have that？）　
 
-////
+ありがたいことに、データセキュリティは Meteor コレクションに正しく　（is baked？）されています；
+あなたが新しいプロジェクトを作るとき、（it＝データセキュリティ？）は初期設定では停止しています。
+そのようになっているのは、Meteor で簡単にアプリを作り始めることができるようにするためで、退屈なことは後でやることになります。
 
-////
+私たちが作ってきたアプリは、こうした補助輪が必要なくなったので、補助輪を外していきましょう！insecure パッケージを削除します：
 
 ~~~bash
 $ meteor remove insecure
 ~~~
 <%= caption "Terminal" %>
 
-////
+そうした後で、投稿フォームが動作しないことに気づくことでしょう。
+これは insecure パッケージがないと、クライアントサイドが投稿コレクションへの挿入が許可されないためです。
+私たちはどのような時にクライアントが投稿を挿入して良いか、あるいは投稿の挿入をサーバーサイドでするか Meteor に明確なルールを与える必要があります。
 
-### Allowing Post Inserts
+### 投稿の挿入を許可する
 
-////
+フォームがまた動くようにするために、私たちはクライアントでの投稿の挿入を許可する方法を示します。
+最終的に、私たちはまた違った（ technique＝技術or方法？）を規定するのですが、
+今のところは次のようにすることで簡単にもう一度動くようにします。
 
 ~~~js
 Posts = new Meteor.Collection('posts');
@@ -176,29 +197,38 @@ Posts.allow({
 
 <%= commit "7-2", "Removed insecure, and allowed certain writes to posts." %>
 
-////
+私たちは Posts.allow を呼び出して
+「クライアントがPostsコレクションに投稿を挿入しても良い状況だ。」と Meteor に指定します。
+今回は、私たちは「 userId を持つユーザーに限ってクライアントは投稿を挿入することを許可する」と言っています。
 
-////
+ユーザーが変更する userId は、allow コールとdeny コールに引き渡されます。
+（ユーザーが誰もログインしていない場合は null を返します。）これは必ず役立ちます。
+ユーザーアカウントは Meteor のコアと結びついているので、userId が常に正しいと確信が持つことができます。
 
-////
+ユーザーが投稿を作るにはログインが必要となるようにできました。　
+ためしにログアウトをして、投稿を作ってみましょう；コンソールでこのように表示されるはずです。
 
 <%= screenshot "7-2", "Insert failed: Access denied " %>
 
-////
+しかし、私たちはまだいくつかの問題に対処する必要があります。
 
- - ////
- - ////
- - ////
+- ログアウトしたユーザーはまだ投稿の作成フォームにアクセスできます。
+- 投稿は（in any way？）　ユーザーに紐づけられていません。（またサーバーにこれを実行するためのコードがありません。）
+- 同じ URL を投稿して、投稿を重複させることも可能となっています。　
 
-////
+では、こうした問題点を修正していきましょう。
 
-### Securing Access To The New Post Form
+### 新しい投稿フォームへのアクセスをセキュアにする
 
-////
+では、ログアウトしたユーザーが投稿フォームを見れないようにするところから始めていきましょう。
+私たちはこれをルーターレベルで行うために、ルートフックを定義します。
 
-////
+フックは　ルーティングプロセスを（intercept＝受け取って？）、（potentially＝潜在的に？）にルーターの行動を変えます。
+これはあなたが入る前や出る時に、あなたの認証情報をチェックする警備員のようなものだと捉えることができます。　
 
-////
+私たちはユーザーがログインしているかどうかチェックして、　
+予定通りの postSubmit テンプレートではなくて、accessDenied テンプレートにレンダリングしてしまわないかをチェックする必要があります。（？？？）　
+（この時はルーターを停止します。）では、そのように router.js を修正していきましょう。
 
 ~~~js
 Router.configure({
@@ -207,12 +237,12 @@ Router.configure({
 
 Router.map(function() {
   this.route('postsList', {path: '/'});
-  
+
   this.route('postPage', {
     path: '/posts/:_id',
     data: function() { return Posts.findOne(this.params._id); }
   });
-  
+
   this.route('postSubmit', {
     path: '/submit'
   });
@@ -230,7 +260,7 @@ Router.before(requireLogin, {only: 'postSubmit'});
 <%= caption "lib/router.js" %>
 <%= highlight "18~25" %>
 
-////
+さらに、アクセスが拒否されたページのためのテンプレートも作ります。
 
 ~~~html
 <template name="accessDenied">
@@ -241,29 +271,35 @@ Router.before(requireLogin, {only: 'postSubmit'});
 
 <%= commit "7-3", "Denied access to new posts page when not logged in." %>
 
-////
+ログインせずに http://localhost:3000/submit/ にアクセスすると、このようになります。
 
 <%= screenshot "7-3", "The access denied template" %>
 
-////
+ルーティングフックの素晴らしい点は、リアクティブであることです。
+つまり、ユーザーがログインする際に、私たちは宣言型で良く、コールバックなどについて考える必要はないということです。
+ユーザーのログイン状態が変化すると、ルーターのページテンプレートは accessDenied から postSubmit に瞬時に変化します。
+私たちはこの処理のために、明示的にコードを書く必要が全くありません。　
 
-////
+ログインした時にページを再読み込みするようにします。
+投稿ページが現れる前のほんのつかの間に、アクセスの拒否されたテンプレートが表示されるところ見かけるかもしれません。
+この理由は、（it ？）がサーバーと通信して、（ブラウザのローカルストレージに保存された）ユーザーが現在いるかどうかチェックする前に、Meteor がすぐにテンプレートのレンダリングを始めるためです。
 
-////
+これはクライアントとサーバー間の込み入ったレイテンシを処理する上で、一般的な問題です。
+この問題を避けるために、私たちはユーザーがアクセスしているのか確かめることを待っている短い間に（loading screen＝ローディングスクリーン？）を表示します。
 
-////
+結局、現段階で私たちはユーザーが正しいログイン認証情報を保持しているのかわからないので、私たちが(do？)する限り accessDenied や postSubmit テンプレートを表示することはできません。
 
-////
-
+Meteor.loggingIn() が true の間にロードディングテンプレートを使うため、フックを修正します。　
+　
 ~~~js
 Router.map(function() {
   this.route('postsList', {path: '/'});
-  
+
   this.route('postPage', {
     path: '/posts/:_id',
     data: function() { return Posts.findOne(this.params._id); }
   });
-  
+
   this.route('postSubmit', {
     path: '/submit'
   });
@@ -275,7 +311,7 @@ var requireLogin = function() {
       this.render(this.loadingTemplate);
     else
       this.render('accessDenied');
-    
+
     this.stop();
   }
 }
@@ -287,9 +323,10 @@ Router.before(requireLogin, {only: 'postSubmit'});
 
 <%= commit "7-4", "Show a loading screen while waiting to login." %>
 
-### Hiding the Link
+### リンクを隠す
 
-////
+ユーザーがログアウトしたした際に、誤ってこのページにアクセスしないようにする最も簡単な方法は、リンクを非表示にすることです。
+これはかなり簡単にできます。
 
 ~~~html
 <ul class="nav">
@@ -300,43 +337,56 @@ Router.before(requireLogin, {only: 'postSubmit'});
 
 <%= commit "7-5", "Only show submit post link if logged in." %>
 
-////
+currentUser ヘルパーはアカウントパッケージによって提供されており、 Meteor.user()  に相当する Spacebars です。
+currentUser ヘルパーはリアクティブなので、ユーザーがログインをするとリンクが表示され、ログアウトをするとリンクが消えます。
 
 ### Meteor Method: Better Abstraction and Security
 
-////
+私たちはログアウトしたユーザー用に、新しい投稿ページへのアクセスをセキュア にしたので、
+仮にログアウトしたユーザーがずるをしてコンソールを使って投稿しようとしても、投稿を作れないようにします。
+まだまだ、対処すべきことがいくつかあります。
 
-- ////
-- ////
-- ////
+- 投稿にタイムスタンプする。
+- 同じ URL が投稿できないようにする。
+- 投稿作成者についての詳細 （ID, username など） を追加する。
 
-////
+こうしたことは submit イベントハンドラでできると考えられます。
+しかし、現実的にはすぐに大きな問題に直面します。
 
-- ////
-- ////
-- ////
+- タイムスタンプでは、私たちはユーザーのコンピュータの時間が正しいとみなす必要がありますが、常にその時間が正しいとは限りません。
+- クライアントはこれまでサイトに投稿されたすべての URL についてわかりません。
+　クライアントは現在見ている投稿だけがわかります。（これがいかに正確なのかは後々見ていきます）
+　そのため、クライアントサイドで URL の重複を調べることはできません。
+- 最後に、私たちはクライアントサイドにユーザーの詳細を追加しましたが、
+　私たちは正確にそれを　（enforce?）できないので、
+　ブラウザーコンソールを使うことで、（ up to exploitation？）、アプリを開くことができます。
 
-////
+以上のような理由から、イベントハンドラをシンプルに保つことが良いということになります。
+もし、最も基本的なコレクションへの挿入や更新よりも多くのことをするとしたら、メソッドを使います。
 
-////
+Meteor のメソッドは　クライアントサイドで呼び出されるサーバーサイドの関数です。
+私たちはこのことについてよく慣れ親しんでいます。
+実のところ、Collection の insert や update、 remove 関数はすべてメソッドなのです。
+どのように自分でメソッドを作るのか見ていきましょう。
 
-////
+まず、post_submit.js に戻ります。
+Posts コレクションに直接挿入するのではなく、post というメソッドを呼び出します。
 
 ~~~js
 Template.postSubmit.events({
   'submit form': function(e) {
     e.preventDefault();
-    
+
     var post = {
       url: $(e.target).find('[name=url]').val(),
       title: $(e.target).find('[name=title]').val(),
       message: $(e.target).find('[name=message]').val()
     }
-    
+
     Meteor.call('post', post, function(error, id) {
       if (error)
         return alert(error.reason);
-        
+
       Router.go('postPage', {_id: id});
     });
   }
@@ -344,9 +394,15 @@ Template.postSubmit.events({
 ~~~
 <%= caption "client/views/posts/post_submit.js" %>
 
-////
+Meteor.call関数は第一引数で指定したメソッドを呼び出します。
+　コール（この場合は、フォームから作られた post オブジェクト）に引数を与えることができ、
+最後にサーバーサイドのメソッドが行われた時に実行するコールバックを加えます。　
+ここで問題があった場合にユーザーに警告を出します。
+もし問題がない場合は、ユーザーを最新の投稿ディスカッションページにリダイレクトします。
 
-////
+それから、私たちは collections/posts.js ファイルでメソッドを定義します。
+とにかく、Meteor メソッドは allow() ブロックを（bypass ＝迂回？）するので、私たちは posts.js からallow() ブロックを削除します。
+メソッドはサーバーで実行されるため、Meteorは（they =メソッド？）が信頼に値すると見なします。
 
 ~~~js
 Posts = new Meteor.Collection('posts');
@@ -355,31 +411,31 @@ Meteor.methods({
   post: function(postAttributes) {
     var user = Meteor.user(),
       postWithSameLink = Posts.findOne({url: postAttributes.url});
-    
+
     // ensure the user is logged in
     if (!user)
       throw new Meteor.Error(401, "You need to login to post new stories");
-    
+
     // ensure the post has a title
     if (!postAttributes.title)
       throw new Meteor.Error(422, 'Please fill in a headline');
-    
+
     // check that there are no previous posts with the same link
     if (postAttributes.url && postWithSameLink) {
-      throw new Meteor.Error(302, 
-        'This link has already been posted', 
+      throw new Meteor.Error(302,
+        'This link has already been posted',
         postWithSameLink._id);
     }
-    
+
     // pick out the whitelisted keys
     var post = _.extend(_.pick(postAttributes, 'url', 'title', 'message'), {
-      userId: user._id, 
-      author: user.username, 
+      userId: user._id,
+      author: user.username,
       submitted: new Date().getTime()
     });
-    
+
     var postId = Posts.insert(post);
-    
+
     return postId;
   }
 });
@@ -388,23 +444,35 @@ Meteor.methods({
 
 <%= commit "7-6", "Use a method to submit the post." %>
 
-////
+このメソッドは少し複雑になっていますが、なんとか話についていくことができるでしょう。
 
-////
+最初に、user 変数を定義して、同じリンクがすでに存在しているかどうかチェックします。
+それから、ユーザーがログインしているかチェックして、ログインしてない場合はエラーを投げます。
+（最終的にブラウザで alert されます。）
+私たちは　投稿にタイトルがあるか確認する post オブジェクトの妥当性を検証します。　
 
-////
+次に、同じ URL の投稿があった場合に、リダイレクトを意味する 302 エラーを投げて、ユーザーに以前作られた投稿に行って見るように伝えます。
 
-////
+MeteorのErrorクラスは３つの引数をとります。
+１つめのerrorは選択したエラーコードです。（この場合では302）
+２つめのreasonは人間が読み取れるエラーの説明です。
+３つめのdetailsは、役立つ追加情報となります。
 
-////
+この場合、私たちは　見つけた投稿のIDを渡すために３つの引数を使います。
+ネタバレ注意：以前から存在している投稿にユーザーをリダイレクトするために、私たちは後でこの３つの引数を使います。　
 
-////
+すべてのチェックが終わると、私たちはUnderscore の pick を使って挿入したいフィールドをつかみます。
+（ユーザーがブラウザーコンソールでこのメソッドを呼び出す（ensure？）はデータをデータベースに入れることができません。）
+また、投稿したユーザーについての情報を現在の時間と同様に extend を使って投稿に含めます。
 
-////
+最後に、私たちは投稿を挿入して、ユーザーに新しい投稿の id を返します。
 
 ### Sorting Posts
 
-////
+これで私たちはすべての投稿に投稿した日付があるので、
+　日付の属性を使ってデータをソートすることは理に適っています。
+そうするために、私たちはMongoDB の sort 演算子を使います。sort 演算子はソートするためのキーを構成するオブジェクトを要求します。
+（and a sign indicating whether they are ascending or descending？？？）
 
 ~~~js
 Template.postsList.helpers({
@@ -418,6 +486,7 @@ Template.postsList.helpers({
 
 <%= commit "7-7", "Sort posts by submitted timestamp." %>
 
-////
+ちょっとした労力がいりましたが、私たちは最終的にユーザーがアプリ内に内容を入力できる安全なユーザーインターフェースを作りました。　　
 
-////
+しかし　ユーザーがコンテンツを作ることができるすべてのアプリは編集や削除をする方法をユーザーに提供する必要があります。
+この点は Editing Posts の章で学ぶことになります。

@@ -3,13 +3,16 @@ title: Editing Posts
 slug: editing-posts
 date: 0008/01/01
 number: 8
-contents: Add a form for editing your posts.|Set up edit permissions.|Restrict which properties can be edited.
+contents: 投稿を編集するフォームを加えます。| 編集（permissions？＝権限？）をセットアップする。|（Restrict which properties can be edited？）
 paragraphs: 29
 ---
 
-////
+これまでで投稿を作ることができたので、次のステップは投稿の編集と削除をできるようにすることです。
+　そうするための UI コードはとてもシンプルですが、
+　そろそろ Meteor でユーザーパーミッションを管理する方法を話す良い時期でしょう。
 
-////
+はじめに、ルーターをつなぎましょう。
+　私たちは投稿編集ページアクセスするためのルートを加えて、データコンテキストを設定します：
 
 ~~~js
 Router.configure({
@@ -40,7 +43,7 @@ var requireLogin = function() {
       this.render('loading')
     else
       this.render('accessDenied');
-  
+
     this.stop();
   }
 }
@@ -52,7 +55,8 @@ Router.before(requireLogin, {only: 'postSubmit'});
 
 ### The Post Edit Template
 
-////
+これで私たちはテンプレートに集中することができます。
+　この postEdit テンプレートはスタンダードなフォームです：
 
 ~~~html
 <template name="postEdit">
@@ -87,20 +91,20 @@ Router.before(requireLogin, {only: 'postSubmit'});
 ~~~
 <%= caption "client/views/posts/post_edit.html" %>
 
-////
+そしてこれが（goes with it？）するpost_edit.jsマネージャーです。
 
 ~~~js
 Template.postEdit.events({
   'submit form': function(e) {
     e.preventDefault();
-    
+
     var currentPostId = this._id;
-    
+
     var postProperties = {
       url: $(e.target).find('[name=url]').val(),
       title: $(e.target).find('[name=title]').val()
     }
-    
+
     Posts.update(currentPostId, {$set: postProperties}, function(error) {
       if (error) {
         // display the error to the user
@@ -110,10 +114,10 @@ Template.postEdit.events({
       }
     });
   },
-  
+
   'click .delete': function(e) {
     e.preventDefault();
-    
+
     if (confirm("Delete this post?")) {
       var currentPostId = this._id;
       Posts.remove(currentPostId);
@@ -124,19 +128,26 @@ Template.postEdit.events({
 ~~~
 <%= caption "client/views/posts/post_edit.js" %>
 
-////
+そろそろ、このコードのほとんどはおなじみになってきたことでしょう。
 
-////
+私たちは２つのテンプレートのイベントコールバックがあります：
+　ひとつはフォームの submit イベントで、もうひとつはリンクを削除する click イベントです。
 
-////
+delete コールバックは、かなりシンプルです：
+　デフォルトのクリックイベントを抑制して、確認を求めます。
+　（get it？＝これを終えると？）、テンプレートのデータコンテキストから現在の投稿 ID を取得して、
+　（ it？＝現在の投稿ID）を削除して、最終的にユーザーをホームページにリダイレクトします。
 
-////
+updateコールバックは少し長いですが、それほど複雑ではありません。
+　デフォルトのイベントを抑制して、現在の投稿を取得した後で、
+　私たちはページから新しいformフィールドの値を取得して、postProperties オブジェクトに（them？）を格納します。
 
-////
+これで私たちはオブジェクトを Meteor の Collection.update() メソッドに渡して、もしアップデートが失敗したら、（ either？＝どちらかの？）エラーを表示するコールバックを使います。
+　あるいは、アップデートに成功したらユーザーを投稿ページに送ります。
 
 ### Adding Links
 
-////
+ユーザーが投稿の編集ページにアクセスする方法ができるように、私たちは投稿にリンクを加えます。
 
 ~~~html
 <template name="postItem">
@@ -155,7 +166,8 @@ Template.postEdit.events({
 <%= caption "client/views/posts/post_item.html" %>
 <%= highlight "5~8" %>
 
-////
+もちろん、私たちは　（somebody else's form？＝誰かのフォーム）に編集リンクを　表示したくありません。
+　これは ownPostヘルパーが中に入る場所です。
 
 ~~~js
 Template.postItem.helpers({
@@ -176,13 +188,15 @@ Template.postItem.helpers({
 
 <%= commit "8-1", "Added edit posts form." %>
 
-////
+投稿編集フォームは良さそうに見えますが、今は何も編集することはできません。　どういうことでしょうか。
 
 ### Setting Up Permissions
 
-////
+私たちは以前にinsecureパッケージを削除したので、現在クライアントサイドでのすべての変更は拒否されます。
 
-////
+これを修正するために、私たちはパーミッションルールを設定します。
+　最初に、lib内に新しく permissions.js ファイルを作ります。
+　これは最初にパーミッションロジックを読み込みます。（そして、両方の環境で使うことができます。）
 
 ~~~js
 // check that the userId specified owns the documents
@@ -192,9 +206,10 @@ ownsDocument = function(userId, doc) {
 ~~~
 <%= caption "lib/permissions.js" %>
 
-////
+　投稿をつくるの章で、私たちは allow()メソッドを削除しました。というのも、私たちは allow()を回避するサーバーメソッドを使って新しい投稿を挿入していたためです。
 
-////
+しかし、今はクライアントから投稿を編集して削除をするために、
+　posts.jsに戻って、allow() ブロックを加えましょう。
 
 ~~~js
 Posts = new Meteor.Collection('posts');
@@ -214,9 +229,10 @@ Meteor.methods({
 
 ### Limiting Edits
 
-////
+自分の投稿を編集できるからといって、あなたがすべてのプロパティを編集できるということではありません。
+　たとえば、私たちはユーザーが投稿を作って、だれかに投稿を割り当てるようにしたくありません。（？？？）
 
-////
+ユーザーが特定のフィールドだけを編集できるようにするために、私たちは　Meteor's deny()コールバックを使います。　
 
 ~~~js
 Posts = new Meteor.Collection('posts');
@@ -238,29 +254,35 @@ Posts.deny({
 
 <%= commit "8-3", "Only allow changing certain fields of posts." %>
 
-////
+私たちは変更されたフィールドのリストを含んだ　fieldNames配列を取得しています。　
+また、url や titleではないフィールドを含んだ（sub-array＝下位の配列？）を返すために、Underscoreのwithout()メソッドを使います。
 
-////
+すべてが標準の場合、この配列は空っぽで、長さは0になります。
+　だれかが何か（funky？＝ファンキー？）なことをしたら、この配列の長さは１かそれ以上になって
+　コールバックは true を返します。（このようにアップデートを拒否します）
 
 <% note do %>
 
 ### Method Calls vs Client-side Data Manipulation
 
-////
+投稿を作るために、私たちはpostメソッドを使います。一方で、投稿を編集したり削除したりするために、私たちは直接クライアントで update と remove を呼び出してallow とdenyでアクセスを制限しています。
 
-////
+いつ（ one？）を適切にして、（not the other？）　でしょうか？（？？？）
 
-////
+物事が　比較的単純で、あなたが適切に allow とdeny でルールを表現できます。
 
-////
+クライアントから　直接データベースを操作することで、（perception of immediacy？）を作って、
+　あなたが優雅に失敗事例に対処することを忘れない限り、より良いユーザーエクスペリエンスに役立てることができます。　
+　（つまり、結局はサーバーが変更を言い返す時は、うまくいきませんでした。）
 
-////
+しかし、ユーザーのコントロールの範囲外にする必要になり始めるとすぐに
+　（たとえば、新しい投稿にタイムスタンプをしたり、正しいユーザーに（it？）を割り当てるなど）、
+　おそらく、メソッドを使うのが良いでしょう。
 
-////
+メソッドコールはのいくつかのシナリオで適切です　。
 
-- ////
-- ////
-- ////
+- 伝えるためのリアクティビリティと同期を待つよりも、コールバックから値を返すか知る必要の時（？？？）。
+- 　多数のコレクションを（ship？）するにはコスト高になる( heavy ?)データベース機能のために。
+- データを要約して集約する場合（たとえば、count, average, sum）。
 
 <% end %>
-
