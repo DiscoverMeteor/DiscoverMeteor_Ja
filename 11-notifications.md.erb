@@ -7,17 +7,23 @@ contents: Add a notifications collection to notify users of other user's actions
 paragraphs: 25
 ---
 
-////
+　これでユーザーはお互いの投稿にコメントできるようになったので、会話が始まったことを知らせると良いでしょう。　
 
-////
+　そのようにするために、投稿にコメントが付いたことを投稿者に知らせて、そのコメントを見るためのリンクを提供します。
 
-////
-
+　これは Meteor の機能がよく輝くところです：
+　Meteor はデフォルトでリアルタイムなので、そうした通知は瞬時に表示されます。
+　ユーザーがページを再読み込みしたり、チェックしたりすることを私たちは待つ必要はありません。
+　特別なコードを書くことなく、新しい通知をポップアップできるからです。　
+　
 ### Creating notifications
 
-////
+　投稿に誰かがコメントをした時の通知を作っていきます。
+　将来的には、通知を多くのシナリオをカバーするように拡張できますが、
+　今のところはユーザーに何が起きているか知らせることで十分でしょう。
 
-////
+　では、Notifications コレクションを作っていきましょう。
+　同様に、自分の投稿の新しいコメントごとにマッチする通知を挿入するcreateCommentNotification関数を作っていきます。
 
 ~~~js
 Notifications = new Meteor.Collection('notifications');
@@ -41,11 +47,16 @@ createCommentNotification = function(comment) {
 ~~~
 <%= caption "collections/notifications.js" %>
 
-////
+　投稿やコメントと同じように、Notifications コレクションはクライアントとサーバーの両方で共有されます。
+　一度ユーザーが（them？）を見た時に、私たちは通知を更新する必要があるので、アップデートをできるようにします。　いつものように、更新許可をユーザーの（own？）データにリダイレクトするようにします。
 
-////
+　私たちはシンプルな関数を作りました。これはユーザーがコメントしている投稿に目を向け、誰がそこから通知されるか見つけて、新しい通知を挿入する関数です。
 
-////
+　私たちはすでに　サーバーサイドのメソッドでコメントを作っているので、
+　関数を呼び出すために、このメソッドを（augment？＝増やす？）ことができます。
+　新しく作ったコメントの _id を変数に保存するため、return Comments.insert(comment) を comment._id = Comments.insert(comment)に　
+取り替えます。
+　それから、 createCommentNotification 関数を呼び出します。
 
 ~~~js
 Comments = new Meteor.Collection('comments');
@@ -57,10 +68,10 @@ Meteor.methods({
 
     // create the comment, save the id
     comment._id = Comments.insert(comment);
-    
+
     // now create a notification, informing the user that there's been a comment
     createCommentNotification(comment);
-    
+
     return comment._id;
   }
 });
@@ -68,7 +79,7 @@ Meteor.methods({
 <%= caption "collections/comments.js" %>
 <%= highlight "8~14" %>
 
-////
+　通知もパブリッシュして、クライアントにサブスクライブしましょう：
 
 ~~~js
 // [...]
@@ -83,7 +94,7 @@ Meteor.publish('notifications', function() {
 Router.configure({
   layoutTemplate: 'layout',
   loadingTemplate: 'loading',
-  waitOn: function() { 
+  waitOn: function() {
     return [Meteor.subscribe('posts'), Meteor.subscribe('notifications')]
   }
 });
@@ -95,7 +106,7 @@ Router.configure({
 
 ### Displaying Notifications
 
-////
+　これで私たちは前に進むことができるようになり、ヘッダーに通知のリストを追加できます。
 
 ~~~html
 <template name="header">
@@ -129,7 +140,8 @@ Router.configure({
 <%= caption "client/views/includes/header.html" %>
 <%= highlight "12~19" %>
 
-////
+And create the notifications and notification templates (they'll share a single notifications.html file):
+　そして、notifications テンプレートと notification テンプレートをつくります。（この２つは１つの notifications.html ファイルを共同で利用します。）
 
 ~~~html
 <template name="notifications">
@@ -161,9 +173,9 @@ Router.configure({
 ~~~
 <%= caption "client/views/notifications/notifications.html" %>
 
-////
-
-////
+　私たちは　コメントされた投稿へのリンクがあるそれぞれの通知のための（plan＝図面？）とコメントされた投稿のユーザーの名前を見ることができます。
+　
+　次に、私たちはマネージャーで、通知の正しいリストを選んで、ユーザーがポイントしているリンクをクリックした時に、通知を"read"としてアップデートする必要があります。
 
 ~~~js
 Template.notifications.helpers({
@@ -191,17 +203,28 @@ Template.notification.events({
 
 <%= commit "11-2", "Display notifications in the header." %>
 
-////
+　通知はエラーと違って、それほど難しくないと思うかもしれません。
+　確かにこの２つはとても似ている構造をしています。
+　しかし、１つだけキーとなる違いがあります：
+　私たちはクライアント-サーバー間を同期した適切なコレクションを作りました。
+　これは通知が永続的であるという意味であり、
+　私たちが同じユーザーアカウントを使う限り、
+　再読み込みするブラウザでも違うデバイスでもこの通知は健在です。
 
-////
+　試しにやってみます：
+　２つめのブラウザーを開きます。（Firefoxだとしましょう）
+　新しいユーザーアカウントを作って、
+　あなたのメインアカウントで作った投稿にコメントします。
+　（Chromeを開いたままで）
+　すると、このようになっているはずです。
 
 <%= screenshot "11-1", "Displaying notifications." %>
 
 ### Controlling access to notifications
 
-////
+　通知はうまく動いています。　しかし、少し問題があります：　この通知は（public？＝公開されている？）のです。
 
-////
+　２つめのブラウザーを開いたままだとしたら、　ブラウザーコンソールで次のようなコードを動かしてみましょう。
 
 ~~~js
 ❯ Notifications.find().count();
@@ -209,15 +232,22 @@ Template.notification.events({
 ~~~
 <%= caption "Browser console" %>
 
-////
+　コメントをされたこの新しいユーザーはどんな通知も（ have？）するべきではありません。
+　ユーザーが　 Notifications コレクションで見ることができる通知は　（our original？）ユーザーに属しています。
 
-////
+　潜在的なプライベートの問題はさておき、
+　私たちはすべてのユーザーがブラウザで読み込まれるすべてのユーザーの通知を保有する余裕はありません。
+　十分に大きなサイトでは、
+　これはブラウザが使用できるメモリをオーバーロードして、深刻なパフォーマンスの問題をもたらすことになります。
 
-////
+　この問題はパブリケーションで解決します。
+　各ブラウザーで共有させたいコレクションの部分を正確に規定するために、私たちはパブリケーションを使います。
 
-////
+　これをするために、私たちはNotifications.find()よりもパブリケーションで違ったカーソルを返す必要があります。
+　つまり、私たちは現在のユーザーの通知に対応するカーソルを返したいのです。　
 
-////
+　そうすることは、十分に簡単です。
+　publish 関数はthis.userId で使うことができる現在のユーザーの _id を持つためです。　
 
 ~~~js
 Meteor.publish('notifications', function() {
@@ -228,7 +258,8 @@ Meteor.publish('notifications', function() {
 
 <%= commit "11-3", "Only sync notifications that are relevant to the user." %>
 
-////
+　私たちが　２つのブラウザーウィンドウをチェックすると、
+　２つの異なるnotifications コレクションを見ることができます。　
 
 ~~~js
 ❯ Notifications.find().count();
@@ -242,6 +273,6 @@ Meteor.publish('notifications', function() {
 ~~~
 <%= caption "Browser console (user 2)" %>
 
-////
+　実際には、アプリにログインしたりログアウトした時に、通知のリストが変化するべきです。　
 
-////
+それはユーザーアカウントが変化するたびに、 パブリケーションが自動的に再パブリッシュするためです。　
