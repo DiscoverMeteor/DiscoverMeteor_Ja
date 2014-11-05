@@ -7,35 +7,50 @@ contents: Build a system where users can vote on posts.|Rank our posts by vote o
 paragraphs: 49
 ---
 
-////
-
-////
-
-////
+　私たちのサイトは　だんだんと一般向けになってきました。
+　ベストのリンクを見つけることはすぐに（ get tricky？）です。
+　私たちが必要なことは、投稿を(order by？)する　ある種のランキングシステムです。
+　
+　私たちは　（ karma？＝karma？）と、時間ベースの（decay of points）と他の多くのこと
+によって、複雑なランキングシステムを作ることができます。
+　（その多くはMicroscopeの兄貴分であるTelescopeでも実装されています。）
+　しかしこのアプリでは、　シンプルにして、投票数で投稿を格付けだけをします。
+　
+　ユーザーに　投稿に投票する方法を提供することから始めていきましょう。
 
 ### Data Model
 
-////
+　私たちは　それぞれの投稿に　（ upvoters？＝賛成者？）を　　格納します。
+　私たちが　ユーザーに賛成票ボタンを　表示するかどうか　知ります。（？？？）　
+　ユーザーが2回投票できないようにします。
 
 <% note do %>
 
 ### Data Privacy & Publications
 
-////
+　私たちは　すべのユーザーに　（upvoters？＝賛成投票者？）のリストを　publishします。
+　これでブラウザーコンソールで　自動的にそのデータを公的にアクセスできるようにします。
 
-////
+　これはある種の　データプライバシー問題ですが、これはコレクションが（work？）する（way？）から起因しています。
+　たとえば、私たちは　ユーザーに　誰が投稿に投票したのかわかるようにしたいでしょうか？
+　この場合、　その情報を公的に　利用することは、実際のところ全く影響も及ぼしませんが、
+　この問題を少なくとも認識することは　重要です。
 
-////
+　また　にも気を付けましょう。　私たちがこの情報の一部を制限したい場合に、
+　私たちは　（either？）サーバーサイドで（ that ？）プロパティを削除することで
+　クライアントが　publication のfieldsオプションに干渉しないようにする必要があります。　　
+　また私たちは　（ denormalize？）します　賛成者の
+　　その数字を（retrieve？＝読みだす？）
 
 <% end %>
 
 ////
 
 ~~~js
-// Fixture data 
+// Fixture data
 if (Posts.find().count() === 0) {
   var now = new Date().getTime();
-  
+
   // create two users
   var tomId = Meteor.users.insert({
     profile: { name: 'Tom Coleman' }
@@ -45,7 +60,7 @@ if (Posts.find().count() === 0) {
     profile: { name: 'Sacha Greif' }
   });
   var sacha = Meteor.users.findOne(sachaId);
-  
+
   var telescopeId = Posts.insert({
     title: 'Introducing Telescope',
     userId: sacha._id,
@@ -55,7 +70,7 @@ if (Posts.find().count() === 0) {
     commentsCount: 2,
     upvoters: [], votes: 0
   });
-  
+
   Comments.insert({
     postId: telescopeId,
     userId: tom._id,
@@ -63,7 +78,7 @@ if (Posts.find().count() === 0) {
     submitted: now - 5 * 3600 * 1000,
     body: 'Interesting project Sacha, can I get involved?'
   });
-  
+
   Comments.insert({
     postId: telescopeId,
     userId: sacha._id,
@@ -71,7 +86,7 @@ if (Posts.find().count() === 0) {
     submitted: now - 3 * 3600 * 1000,
     body: 'You sure can Tom!'
   });
-  
+
   Posts.insert({
     title: 'Meteor',
     userId: tom._id,
@@ -81,7 +96,7 @@ if (Posts.find().count() === 0) {
     commentsCount: 0,
     upvoters: [], votes: 0
   });
-  
+
   Posts.insert({
     title: 'The Meteor Book',
     userId: tom._id,
@@ -91,7 +106,7 @@ if (Posts.find().count() === 0) {
     commentsCount: 0,
     upvoters: [], votes: 0
   });
-  
+
   for (var i = 0; i < 10; i++) {
     Posts.insert({
       title: 'Test post #' + i,
@@ -108,25 +123,27 @@ if (Posts.find().count() === 0) {
 <%= caption "server/fixtures.js" %>
 <%= highlight "22, 48, 58, 69" %>
 
-////
+これまで通り、アプリを停止して、meteor resetを実行して、新しいユーザーアカウントを作ります。
+それから、投稿が作成された時に２つのプロパティが初期化されるようにします。
+
 
 ~~~js
 //...
 
 // check that there are no previous posts with the same link
 if (postAttributes.url && postWithSameLink) {
-  throw new Meteor.Error(302, 
-    'This link has already been posted', 
+  throw new Meteor.Error(302,
+    'This link has already been posted',
     postWithSameLink._id);
 }
 
 // pick out the whitelisted keys
 var post = _.extend(_.pick(postAttributes, 'url', 'title', 'message'), {
-  userId: user._id, 
-  author: user.username, 
+  userId: user._id,
+  author: user.username,
   submitted: new Date().getTime(),
   commentsCount: 0,
-  upvoters: [], 
+  upvoters: [],
   votes: 0
 });
 
@@ -141,7 +158,7 @@ return postId;
 
 ### Building our Voting Templates
 
-////
+最初に、（post partial）に（ upvote）ボタンを追加します：
 
 ~~~html
 <template name="postItem">
@@ -165,7 +182,9 @@ return postId;
 
 <%= screenshot "13-1", "The upvote button" %>
 
-////
+Next, we'll call a server upvote Method when the user clicks on the button:
+次に、　ユーザーがボタンをクリックしたら、サーバーの（upvote？）メソッドを呼び出します。
+
 
 ~~~js
 //...
@@ -180,27 +199,28 @@ Template.postItem.events({
 <%= caption "client/views/posts/post_item.js" %>
 <%= highlight "3~8" %>
 
-////
+最後に、collections/posts.js ファイルに戻って、投稿を（upvote？）するMeteorのサーバーサイドメソッドを追加します：
+
 
 ~~~js
 Meteor.methods({
   post: function(postAttributes) {
     //...
   },
-  
+
   upvote: function(postId) {
     var user = Meteor.user();
     // ensure the user is logged in
     if (!user)
       throw new Meteor.Error(401, "You need to login to upvote");
-    
+
     var post = Posts.findOne(postId);
     if (!post)
       throw new Meteor.Error(422, 'Post not found');
-    
+
     if (_.include(post.upvoters, user._id))
       throw new Meteor.Error(422, 'Already upvoted this post');
-    
+
     Posts.update(post._id, {
       $addToSet: {upvoters: user._id},
       $inc: {votes: 1}
@@ -213,13 +233,23 @@ Meteor.methods({
 
 <%= commit "13-1", "Added basic upvoting algorithm." %>
 
-////
+このメソッドは（fairly straightforward？）です。
+私たちは　ユーザーがログインしていて、投稿が実際に存在するか確かめるために、（defensive checks？）を行います。
+それから、ユーザーがすでに投稿に投票をしていないことをダブルチェックします。
+もしユーザーが投票の（total score？）を増やしていないとしたら、ユーザーに（set of upvoters？）を追加します。、
 
-////
+最後のステップは（interesting）です。というのも、私たちは（ a couple of？）の特別な Mongo 演算子を使ったからです。
+学ぶことはたくさんありますが、この２つは（extremely？）役立ちます：
+$addToSet は（it？）がまだ存在しない限り、（array ＝配列？）プロパティに（item？）を追加します。
+$inc は（integer ）フィールドをシンプルに増加させます。
+
 
 ### User Interface Tweaks
 
-////
+もしユーザーがログインしていない　（, or）すでに投稿に（upvoted）したとしたら、
+ユーザーは投票することはできません。　これをUIに反映するために、
+（ upvote ？）ボタンに（disabled）なCSSクラスを追加する（conditionally？）ヘルパーを使います。　
+
 
 ~~~html
 <template name="postItem">
@@ -261,16 +291,20 @@ Template.postItem.events({
 <%= caption "client/views/posts/post_item.js" %>
 <%= highlight "8~15, 19" %>
 
-////
+私たちはクラスを .upvote から.upvotable に変えたので、クリックイベントハンドラを忘れずに変更します。
+
 
 <%= screenshot "13-2", "Greying out upvote buttons." %>
 
 <%= commit "13-2", "Grey out upvote link when not logged in / already voted." %>
 
-////
+次に、1回投票された投稿に"1 votes"と（labelled？）されていることがわかったので、
+（pluralize those labels properly？）するために時間を使いましょう。
+（Pluralization）は複雑なプロセスですが、どこでも使うことができます。
+
 
 ~~~js
-Handlebars.registerHelper('pluralize', function(n, thing) {
+UI.registerHelper('pluralize', function(n, thing) {
   // fairly stupid pluralizer
   if (n === 1) {
     return '1 ' + thing;
@@ -281,7 +315,10 @@ Handlebars.registerHelper('pluralize', function(n, thing) {
 ~~~
 <%= caption "client/helpers/handlebars.js" %>
 
-////
+前に私たちが作ったヘルパーは（the？）マネージャとマネージャが適用するテンプレートと結びついています。
+しかし、UI.registerHelper を使うことで、
+どのようなテンプレートでも使うことができるグローバルヘルパーを作りました。
+
 
 ~~~html
 <template name="postItem">
@@ -302,34 +339,44 @@ Handlebars.registerHelper('pluralize', function(n, thing) {
 
 <%= commit "13-3", "Added pluralize helper to format text better." %>
 
-////
+We should now see "1 vote".
+これで"1 vote"となっていることがわかります。
 
 ### Smarter Voting Algorithm
 
-////
+私たちの（ upvoting？）コードは良さそうに見えますが、まださらに良くすることができます。
+（ upvote ？）メソッドで、Mongoに２つのコールをします：
+まず投稿を（grab？）して、次にそれを更新します。
 
-////
+これには２つの問題があります。
+まず、データベースに2回アクセスすることは（somewhat？）非効率です。
+しかし、さらに重要なことに、これは（a race condition）を引き起こします。
+私たちは次のようなアルゴリズムを（are following）しています。
 
-1. ////
-2. ////
-3. ////
 
-////
+1. テータベースから投稿を（Grab）する。
+2. 　ユーザーが投票したかチェックする。
+3. 　そうでない場合は、（by the user）によって、投票を行います。
+
+　ステップ１から３の間で、同じユーザーが再び投稿に投票したらどうなるでしょうか？
+　私たちの現在のコードは　　ユーザーが同じ投稿に2回投票することができるように　ドアが開かれています。
+　ありがたいことに、Mongo は（allows us to be smarter？）で、１つのMongoコマンドでで１から３のステップを（combine？）します。
+
 
 ~~~js
 Meteor.methods({
   post: function(postAttributes) {
     //...
   },
-  
+
   upvote: function(postId) {
     var user = Meteor.user();
     // ensure the user is logged in
     if (!user)
       throw new Meteor.Error(401, "You need to login to upvote");
-    
+
     Posts.update({
-      _id: postId, 
+      _id: postId,
       upvoters: {$ne: user._id}
     }, {
       $addToSet: {upvoters: user._id},
@@ -343,49 +390,90 @@ Meteor.methods({
 
 <%= commit "13-4", "Better upvoting algorithm." %>
 
-////
+What we are saying is "find all the posts with this id that this user hasn't yet voted for,
+and update them in this way".
+If the user hasn't yet voted, it will of course find the post with that id.
+On the other hand if the user has voted, then the query will match no documents,
+and consequently nothing will happen.
+　
 
-////
+　マイナス面は　私たちは　ユーザーに　投稿に投票したことを知らせることができないという点だけです。
+　（私たちがこれをチェックするデータベースコールを削除したからです。）
+　しかし、 ユーザーインターフェースで"upvote"ボタンが（disabled ）されていることを（should know？）です
+
 
 <% note do %>
 
 ### Latency Compensation
 
-////
+　投票数を（tweaking？）することで、
+　（cheat？）を（tried to？）して、
+　リストの（top of？）に１つ投票を送りましょう。
+
 
 ~~~js
 > Posts.update(postId, {$set: {votes: 10000}});
 ~~~
 <%= caption "Browser console" %>
 
-////
+(Where postId is the id of one of your posts)
+  （postId は投稿の id の場所）　（？？？）
 
-////
 
-////
+　（This brazen attempt at gaming the system？）は collections/posts.js の中の deny()コールバック（remember?＝覚えてる？）
+　　で（be caught）されて、瞬時に（ negated？）されます。
 
-////
 
-////
+　しかし、よく見てみると、
+　レイテンシコンペンセイションが作動していることがわかります。
+　これは（quick？）ですが、
+　（shooting back into position）する前に、
+　投稿は（briefly ？）にリストの一番上にジャンプします。
+
+　何が起きたのでしょうか？
+　（local Posts？）コレクションで、（ update？）は（ incident？）なく、適用されます。
+　これは瞬時に起こるので、
+　投稿は　リストの一番上に（ shot to？）しました。
+　（Meanwhile？）、サーバーで（the update？）は拒否されました。
+　（So some time later ？）（自分のマシーンでMeteorを実行している場合、ミリ秒です）、
+　ローカルコレクションに（revert itself？）するように（tell）して、サーバーはエラーを返しました。
+
+最終結果：
+サーバーからの返信を待つ間。
+ユーザーインターフェースは（ help？）できませんでしたが、ローカルコレクションを（trust）します。（？？？）
+サーバーが（comes back？）して、（modification？）を拒否したらすぐに、
+ユーザーインターフェースはそれを反映して適応します。
+
 
 <% end %>
 
 ### Ranking the Front Page Posts
 
-////
+　今のところ、私たちは投票数に基づいて、投稿ごとにスコアがあるので、
+　（best？）投稿のリストを表示しましょう。
+　そうするために、私たちは　(post?)コレクションに　２つのサブスクリプションを（manage）する方法を見て、
+　postList テンプレートをさらに少しだけ（general＝一般的に？）します。
 
-////
+手始めに、（one for each ）順番をソートする２つのサブスクリプションを作りたいところです。
+ここでの（trick）は、２つのサブスクリプションが　異なる引数で　同じ posts パブリケーションにサブスクライブすることです。
 
-////
+　また、それぞれ /new と /best の URL でアクセスできる newPosts と bestPosts という新しい２つのルートを作ります。
+　（もちろん、/new/5 と /best/5 のページネーションと（along with ？））
 
-////
+　これをするために、
+　私たちは　PostsListController を　２つの　（distinct？）な（NewPostsListController と BestPostsListController）コントローラに
+　 （extend＝拡大適用します？）。
+　（inherit from＝継承するための？）１つの NewPostsListController を（giving us？）することで、
+　私たちは　 home と newPosts のルートで
+　まさに同じルートオプションを再利用することができます。　　
+
 
 ~~~js
 PostsListController = RouteController.extend({
   template: 'postsList',
-  increment: 5, 
-  limit: function() { 
-    return parseInt(this.params.postsLimit) || this.increment; 
+  increment: 5,
+  limit: function() {
+    return parseInt(this.params.postsLimit) || this.increment;
   },
   findOptions: function() {
     return {sort: this.sort, limit: this.limit()};
@@ -424,12 +512,12 @@ Router.map(function() {
     path: '/',
     controller: NewPostsListController
   });
-  
+
   this.route('newPosts', {
     path: '/new/:postsLimit?',
     controller: NewPostsListController
   });
-  
+
   this.route('bestPosts', {
     path: '/best/:postsLimit?',
     controller: BestPostsListController
@@ -440,11 +528,19 @@ Router.map(function() {
 <%= caption "lib/router.js" %>
 <%= highlight "8,16,21~34,36~49" %>
 
-////
+　今のところ、１つ以上のルートがあるので、
+　PostsListController からnextPath logic を（taking ？）して、
+　 NewPostsListControllerと BestPostsListControllerに　（into ？）します。
+　というのも、パスが（in either case）で異なるためです。
 
-////
+さらに、私たちが投票をソートする時、
+順番が正しいことを確かめるために、タイムスタンプを（submitted ？）することで、
+（secondary？）ソートを（ have？）します。
 
-////
+新しいコントローラ（in place？）で、
+私たちは　今　安全に　以前の postsListルートを削除することができます。
+次のコードを削除します。
+
 
 ~~~html
 <template name="header">
@@ -484,7 +580,20 @@ Router.map(function() {
 <%= caption "client/views/include/header.html" %>
 <%= highlight "9, 15~21" %>
 
-////
+
+さらに、イベントハンドラを削除して投稿を更新する必要があります：
+
+  'click .delete': function(e) {
+    e.preventDefault();
+    if (confirm("Delete this post?")) {
+      var currentPostId = this._id;
+      Posts.remove(currentPostId);
+      Router.go('home');
+    }
+  }
+client/views/posts_edit.js
+
+これがすべて終わると、私たちは　ベスト投稿リストを得ます：
 
 <%= screenshot "13-4", "Ranking by points" %>
 
@@ -492,9 +601,15 @@ Router.map(function() {
 
 ### A Better Header
 
-////
+　これで２つのリストページがあるので、
+　どちらのリストを現在見ているのか知ることは難しいかもしれません。（？？？）
+　そのため、もっとわかりやすくするために、ヘッダーを　（evisit？）しましょう。
+　私たちは　header.jsマネージャを作って、カレントパスで使うヘッダーを作って、
+　１つ以上の（ named？）ルーターに　（active class on our navigation items？）をセットします。
 
-////
+　なぜ私たちが複数の（named ？）ルートをサポートしたいかというと、
+　それぞれ / と /new URLに対応するhome と newPosts ルートが同じテンプレートを（ bring up？）するためです。
+　つまり、（in both cases）で、activeRouteClass は<li> タグを（active）にするほど（smart enough ？）だということです。
 
 ~~~html
 <template name="header">
@@ -539,11 +654,11 @@ Template.header.helpers({
   activeRouteClass: function(/* route names */) {
     var args = Array.prototype.slice.call(arguments, 0);
     args.pop();
-    
+
     var active = _.any(args, function(name) {
       return Router.current().route.name === name
     });
-    
+
     return active && 'active';
   }
 });
@@ -556,18 +671,37 @@ Template.header.helpers({
 
 ### Helper Arguments
 
-////
+　今のところ、私たちは　（that specific？）パターンを使いませんでしたが、
+　他の Spacebars タグと同様に、テンプレートヘルパーは引数をとることができます。
 
-////
+　もちろん、　関数に　（specific named？）引数を渡すことができる一方で、
+　関数の中で引数オブジェクトを呼び出すことで、（an unspecified number of anonymous？）の引数を
+　渡すこともできます。
 
-////
+
+　（In this last case, ？）
+　おそらく、あなたはSpacebarsで
+　この引数オブジェクトを通常のJavaScriptの配列に変換して、
+　（added at the end？）されたハッシュを削除するために、(it？)でpop()を呼び出したいと
+　思うことでしょう。
+
 
 <% end %>
 
-////
+　（For each navigation item, ？）、
+　activeRouteClass ヘルパーは　ルートの名前のリストを取って、
+　（ any of ？）ルートが（the test）を渡すかどうか確かめるために、
+　 Underscore　の　any() ヘルパーを使います。
 
-////
+
+　ルートの（ any of ？）が　カレントパスとマッチしたら、any()は true を返します。
+　最後に、私たちは　（of the boolean && string JavaScript pattern where false && myString returns false）を利用していますが、
+　（true && myString？）は myString を返します。
 
 <%= commit "13-6", "Added active classes to the header." %>
 
-////
+　これでユーザーはリアルタイムで投稿に投票することができるので、
+　ランキングが変化する（as＝ごとに？）、（items ？）が（jumping up and down the homepage ？）することがわかります。
+　しかし、
+　（wouldn't it be nice
+　　if there was a way to smooth out all this with a few well-timed animations?）
