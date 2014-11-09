@@ -3,55 +3,62 @@ title: Errors
 slug: errors
 date: 0009/01/01
 number: 9
-contents: Create a better mechanism for displaying errors and messages.|Learn how to use `Template.rendered` to know when a user has seen an error.|Use a router filter to make sure errors are only seen once.
+points: 10
+photoUrl: http://www.flickr.com/photos/ikewinski/9413892879/
+photoAuthor: Mike Lewinski
+contents: エラーとメッセージを表示するためのより良いメカニズムを作成します。|より厳密なフォームバリデーションを実装します。|ユーザーがエラーを見ているかを知る`Template.rendered`を使用方法を学んでください。
 paragraphs: 31
 version: 1.7
 ---
 
-投稿に問題がある時に、ユーザーに警告をするために単純にブラウザの標準的な　alert() ダイアログを使うことは少々不愉快で、素晴らしいUXに役立つわけではありません。
-　この点をよりよくできます。
+投稿に問題がある時に、
+ユーザーに警告をするために単純にブラウザの標準的な`alert()`ダイアログを使うことは少々不愉快で、
+素晴らしいUXに役立つわけではありません。
+この点をよりよくできます。
 
 多目的で使えるエラーを報告する仕組みを作りましょう。
-　これはユーザーのワークフローを中断することなくユーザーに何が起きているか知らせる上でより良い役割を果たします。
+これはユーザーのワークフローを中断することなくユーザーに何が起きているか知らせる上でより良い役割を果たします。
 
-### Introducing Local Collections
+人気のMacOSアプリに似たウィンドウの右上隅、
+[Growl](http://growl.info/)のような新たなエラーを表示する単純なシステムを実装しようと思います。
 
-サイトの（"flash"？）の領域でユーザーがどのエラーを見ているか把握して、
-　新たにエラーを表示するシンプルなシステムを実装していきます。
-　このUXパターンはユーザーのワークフローを邪魔せずに、私たちがユーザーに何かが起きていると知らせたいときに、役立ちます。
+### ローカルコレクションの紹介
 
-私たちが作るものは Ruby on Rails アプリでよく見かける flash メッセージに似ていますが、
-　（more subtle？）です。　（it？）はクライアントサイドで実装され、ユーザーがメッセージを見ている時を　（ know？）
+始めるにあたり、私たちのエラーを格納するコレクションを作成する必要があります。
+エラーは、現在のセッションにのみ関連し、永続的である必要はないことを考えると、
+新しい何かをする、*ローカルコレクション*を作成しようと思います。
 
-まず初めに、私たちは　エラーを格納するコレクションを作ります。
-　エラーはカレントセッションに関連するだけで、永続的である必要がないことを考えると、私たちは何か新しいことをして、ローカルコレクションを作っていくことになります。
-　これが意味することは、Errorsコレクションはブラウザだけに機能して、サーバーとは同期しないということです。
-
-このようにするために、私たちはコレクションの名前をnullに設定して、クライアントだけのファイルにエラーを作ります。
-　私たちは新しいローカルコレクションにエラーを挿入するthrowError関数を作ります。
+上記を達成するために、我々は`client`ディレクトリ内のエラーを作成します。
+（このコレクションのデータはサーバー側のデータベースに保存されることはありません）
+そのMongoDBのコレクション名が`null`に設定します（クライアント専用のコレクションを作ります。）
 
 ~~~js
 // Local (client-only) collection
-Errors = new Meteor.Collection(null);
+Errors = new Mongo.Collection(null);
 ~~~
 <%= caption "client/helpers/errors.js" %>
 
-これでコレクションが作られたので、私たちはこのコレクションにエラーの追加を呼び出すthrowError関数を入れることができます。
-　私たちは allow や deny などに気にする必要がありません。というのも、これはローカルコレクションで、MongoDBに保存されていないからです。
+これでコレクションが作られたので、
+私たちはこのコレクションにエラーの追加を呼び出す`throwError`関数を入れることができます。
+私たちは`allow`や`deny`などのセキュリテイを気にする必要がありません。
+というのも、このコレクションは「ローカル」で、MongoDBに保存されていないからです。
 
 ~~~js
 throwError = function(message) {
-  Errors.insert({message: message})
-}
+  Errors.insert({message: message});
+};
 ~~~
 <%= caption "client/helpers/errors.js" %>
 
-エラーを格納するためにローカルコレクションを使うことの利点は、すべてのコレクションと同様に、リアクティブだからです。
-つまり、私たちは他のコレクションデータを表示するのと同じように （declaratively＝宣言的に？）エラーを表示することができます。
+エラーを格納するためにローカルコレクションを使うことの利点は、
+すべてのコレクションと同様に、リアクティブだからです。
+つまり、私たちは他のコレクションデータを表示するのと同じように
+リアクティブにエラーを表示することができます。
 
-### Displaying errors
 
-メインレイアウトの（ top of？）でエラーを表示していきます。
+### エラー表示
+
+メインレイアウトの上部でエラーを表示していきます:
 
 ~~~html
 <template name="layout">
@@ -59,19 +66,19 @@ throwError = function(message) {
     {{> header}}
     {{> errors}}
     <div id="main" class="row-fluid">
-      {{yield}}
+      {{> yield}}
     </div>
   </div>
 </template>
 ~~~
-<%= caption "client/views/application/layout.html" %>
-<%= highlight "7" %>
+<%= caption "client/templates/application/layout.html" %>
+<%= highlight "4" %>
 
-errors.html 内に、エラーとエラーテンプレートを作りましょう：
+errors.html 内に、`errors` and `error` テンプレートを作りましょう：
 
 ~~~html
 <template name="errors">
-  <div class="errors row-fluid">
+  <div class="errors">
     {{#each errors}}
       {{> error}}
     {{/each}}
@@ -79,24 +86,25 @@ errors.html 内に、エラーとエラーテンプレートを作りましょ�
 </template>
 
 <template name="error">
-  <div class="alert alert-error">
+  <div class="alert alert-danger" role="alert">
     <button type="button" class="close" data-dismiss="alert">&times;</button>
     {{message}}
   </div>
 </template>
 ~~~
-<%= caption "client/views/includes/errors.html" %>
+<%= caption "client/templates/includes/errors.html" %>
 
 <% note do %>
 
-### Twin Templates
+### ２つのテンプレート
 
 私たちが２つのテンプレートを１つのファイルに置いていることにお気づきでしょう。
-　今まで私たちは　「１つのファイルに１つのテンプレート」という慣習を支持してきましたが、
-　Meteorに関する限りでは、１つのファイルにすべてのテンプレートを置くこともできます。
+今まで私たちは　「１つのファイルに１つのテンプレート」という慣習を支持してきましたが、
+Meteorに関する限りでは、１つのファイルにすべてのテンプレートを置くこともできます。
+(混乱を招くことになりますがずべてを`main.html`に収めることすらできます！)
 
 この場合、両方のerrorテンプレートはとても短いので、
-　私たちはリポジトリを少しきれいにしておくために、例外として同じファイルにerrorテンプレートを置きました。　
+私たちはリポジトリを少しきれいにしておくために、例外として同じファイルにerrorテンプレートを置きました。　
 
 <% end %>
 
@@ -109,19 +117,50 @@ Template.errors.helpers({
   }
 });
 ~~~
-<%= caption "client/views/includes/errors.js" %>
+<%= caption "client/templates/includes/errors.js" %>
+
+
+実はすでに新しいエラーメッセージを手動で試すことができます。
+以下のようにブラウザコンソールでタイプするだけです。:
+
+~~~js
+throwError("I'm an error!");
+~~~
+
+<%= screenshot "9-1", "Testing error messages." %>
 
 <%= commit "9-1", "Basic error reporting." %>
 
-### Creating errors
+<% note do %>
 
-私たちはエラーを表示する方法を知っていますが、（anything？）を見る前に　（ some？）を作る必要があります。
-　ユーザーが新しい投稿を入れることで、エラーは最も普遍的に引き起こされるので、（ post creation？）コールバックでエラーをチェックして、（ get raised？）されたあらゆるエラーメッセージを表示します。
+### 2種類のエラー
 
-さらに、302 error（これは　同じURLの投稿がすでに存在していることを示しています。）を（get？＝取得？）したら、
-　すでに存在している投稿にユーザーをリダイレクトします。
-　私たちはerror.details から　すでに存在している投稿の　_idを得ています
-　（私たちが7章で（as the third  our Error class？）のdetails引数として投稿の_idを渡したことを思い出しましょう。）
+この時点で、「アプリレベル」エラーと「コードレベル」のエラーとを区別することは重要です。
+
+
+**アプリレベル**エラーは、一般的にユーザがトリガーとなり、
+ユーザーが順番にそれらに基づいて行動していきます。
+これらは、検証エラー、権限エラー、「Not Found.」エラーなどというものです。
+これらはユーザーが遭遇した瞬間に問題が解決するのを助けるために、
+ユーザーに表示するエラーの一種です。
+
+**コードレベル**エラーは、上記以外の種類で、予想外にあなたのコード内の実際のバグがトリガーで、
+おそらく直接ユーザーに、*見せたくない*部分です。
+その代わりに、サードパーティのエラー追跡サービスがいくつかありますのでそれらで追跡することになります。
+(例えば[Kadira](http://kadira.io))
+
+
+この章で取り扱うバグは、アプリレベルエラーのタイプに焦点を当てます。
+
+<% end %>
+
+### エラーの作成
+
+今、エラーを表示する方法を知りましたが、私たちは何かを表示する前に、
+表示するためのトリガーを必要としています。
+でも、実はすでに良好なエラーのシナリオを実装しています。:重複した投稿の警告です。
+単純に`postSubmit`イベントヘルパー内の`alert`呼び出しを、
+新しい`throwError`関数に置き換えるだけです。:
 
 ~~~js
 Template.postSubmit.events({
@@ -130,87 +169,124 @@ Template.postSubmit.events({
 
     var post = {
       url: $(e.target).find('[name=url]').val(),
-      title: $(e.target).find('[name=title]').val(),
-      message: $(e.target).find('[name=message]').val()
-    }
+      title: $(e.target).find('[name=title]').val()
+    };
 
-    Meteor.call('post', post, function(error, id) {
-      if (error) {
-        // display the error to the user
-        throwError(error.reason);
+    Meteor.call('postInsert', post, function(error, result) {
+      // display the error to the user and abort
+      if (error)
+        return throwError(error.reason);
 
-        if (error.error === 302)
-          Router.go('postPage', {_id: error.details})
-      } else {
-        Router.go('postPage', {_id: id});
-      }
+      // show this result but route anyway
+      if (result.postExists)
+        throwError('This link has already been posted');
+
+      Router.go('postPage', {_id: result._id});
     });
   }
 });
 ~~~
-<%= caption "client/views/posts/post_submit.js" %>
-<%= highlight "12~14, 16~21" %>
+<%= caption "client/templates/posts/post_submit.js" %>
+<%= highlight "13,17" %>
+
+さらに`postEdit`イベントヘルパーにも同じことをします。
+
+~~~js
+Template.postEdit.events({
+  'submit form': function(e) {
+    e.preventDefault();
+
+    var currentPostId = this._id;
+
+    var postProperties = {
+      url: $(e.target).find('[name=url]').val(),
+      title: $(e.target).find('[name=title]').val()
+    }
+
+    Posts.update(currentPostId, {$set: postProperties}, function(error) {
+      if (error) {
+        // display the error to the user
+        throwError(error.reason);
+      } else {
+        Router.go('postPage', {_id: currentPostId});
+      }
+    });
+  },
+  //...
+});
+~~~
+<%= caption "client/templates/posts/post_edit.js" %>
+<%= highlight "15" %>
 
 <%= commit "9-2", "Actually use the error reporting." %>
 
-試してましょう：http://meteor.comのURLを入力して投稿を作ってみましょう。このURLがすでに（in the fixtures？）に投稿が（attached＝存在）していたら、 このように表示されます。
+試してましょう：URLに`http://meteor.com`を入力して投稿を作ってみましょう。
+このURLがすでに固定ファイルの投稿情報に入っているため、このように表示されるはずです。
 
 <%= screenshot "9-1", "Triggering an error" %>
 
-### Clearing Errors
+### エラーの削除
 
-現在のところ、エラーのクローズボタンをクリックすると、エラーが消えます。
-　これはクローズボタンがTwitter Bootstrapに埋め込まれた JavaScript　を引き起こすからです。
+数秒後にエラーメッセージは消えていきます。
+これは、私たちはこの本の冒頭に戻ればわかりますが、追加のスタイルシートに含まれたCSSマジックの小辺に
+実際にあります。
 
-しかし、Bootstrapは DOMからエラー<div>を削除しますが、
-　Meteorコレクションからエラーオブジェクトを削除しません。
-エラーが役割を果たしたら、ローカルコレクションをきれいにする方法を追加しましょう。
-
-最初に、私たちは seen プロパティを（include？＝インクルード？）するために　throwErrorエラー関数を修正します。
-　これはエラーが実際にユーザーに見られたのか把握するために、後々役立ちます　
-
-最初に、私たちは seen プロパティを（include？＝インクルード？）するために　throwErrorエラー関数を修正します。
-　これはエラーが実際にユーザーに見られたのか把握するために、後々役立ちます　
-
-これが終わると、私たちは（"seen" ？）エラーをクリアする　clearErrors関数をコーディングします。
-
-~~~js
-// Local (client-only) collection
-Errors = new Meteor.Collection(null);
-
-throwError = function(message) {
-  Errors.insert({message: message, seen: false})
+~~~css
+@keyframes fadeOut {
+  0% {opacity: 0;}
+  10% {opacity: 1;}
+  90% {opacity: 1;}
+  100% {opacity: 0;}
 }
 
-clearErrors = function() {
-  Errors.remove({seen: true});
+//...
+
+.alert {
+  animation: fadeOut 2700ms ease-in 0s 1 forwards;
+  //...
 }
 ~~~
-<%= caption "client/helpers/errors.js" %>
-<%= highlight "5,8~10" %>
+<%= caption "client/stylesheets/style.css" %>
 
-　次に、私たちは　ルーターでエラーをクリアします　（ so that？）　他のページに（navigating？）はエラーを永遠に消去するように
 
-~~~js
-// ...
+opacityプロパティのための4つのキーフレームを指定する`fadeOut` CSSアニメーション
+（0％、10％、90％、100%を設定）を定義し、
+`.alert`クラスにこのアニメーションを適用しています。
 
-Router.before(requireLogin, {only: 'postSubmit'})
-Router.before(function() { clearErrors() });
-~~~
-<%= caption "lib/router.js" %>
-<%= highlight "4" %>
+アニメーションは、2700ミリ秒の合計に対して実行され`ease-in`タイミングの式を使用します。
+一度だけ実行0秒の遅延で実行し、それが実行されてたら、最後のキーフレームに滞在します。
 
-clearErrors() 関数が仕事をするために、エラーは seenにマークされている必要があります。
-　正しく行うために、対処する必要のある１つのエッジケースがあります。：
-　私たちがエラーを投げて、どこかにユーザーをリダイレクトすると、ユーザーが重複したリンク投稿した時と同様に、リダイレクトが瞬時に行われます。
-　つまり、エラーがクリアされる前に、ユーザーは実際にエラーを見るチャンスがないということです。
+<% note do %>
 
-これはseenプロパティが役立つところです。
-　私たちはユーザーが実際にエラーを見た場合に、確実にtrueとだけセットする必要があります。　
+### アニメーション vs アニメーション
 
-このようにするために、Meteor.defer()を使います。
-　この関数はMeteorに今起こっていることの「直後に」コールバックを実行する命令をします。
-　これが機能すると、defer()はブラウザが先に進む前に、1ミリ秒待つように規定していると考えることができます。
+Meteor自身が制御アニメーションを行わず、
+(あらかじめ決められ、我々のアプリのコントロールの外にある)、
+CSSベースのアニメーションを使用していることに不思議に思われるかもしれません。
+
+Meteorは挿入アニメーションのサポートを提供しませんが、
+我々はエラーに集中するためにこの章を使っています。だから我々は今のところ「イマイチ」なCSSアニメーションを使用しますし、
+我々はアニメーションの章のための派手なものを残しておきます。
+
+<% end %>
+
+これは動作しますが、複数のエラーをトリガします。
+（例えば、同じリンクを3回提出する等を試してみてください。）
+それらが互いの上に積み重ね取得していることに気付きますか。
+
+
+<%= screenshot "9-3", "Stack overflow." %>
+
+これは`.alert`が*見た目としては*消えていますが、DOMには存在しているからなのです。
+この問題を解決する必要があります。
+
+これはまさにMeteorが輝く状況の一つです。
+`Errors`コレクションがリアクティブであるため、
+私たちはこれらの古いエラーを取り除くためにやらなければならないのは、
+コレクションからそれらを削除することです！
+
+`Meteor.setTimeout`を使用し、タイムアウト後(この場合は、3000ミリ秒)に
+実行されるコールバック関数を指定します。
 
 ~~~js
 Template.errors.helpers({
@@ -221,36 +297,354 @@ Template.errors.helpers({
 
 Template.error.rendered = function() {
   var error = this.data;
-  Meteor.defer(function() {
-    Errors.update(error._id, {$set: {seen: true}});
-  });
+  Meteor.setTimeout(function () {
+    Errors.remove(error._id);
+  }, 3000);
 };
 ~~~
-<%= caption "client/views/includes/errors.js" %>
+<%= caption "client/templates/includes/errors.js" %>
 <%= highlight "7~12" %>
 
-<%= commit "9-3", "Monitor which errors have been seen, and clear on routing." %>
+<%= commit "9-3", "Clear errors after 3 seconds." %>
 
-私たちがしていることは、errorsテンプレートがレンダリングされた後で
-　seenを1ミリ秒間にtrueとセットすることをMeteorに規定しています。
-　しかし、私たちはどのようにリダイレクションが瞬時に起きると言ったのか（？？？）思い出して下さい。
-　つまり、リダイレクションは実行されないdeferコールバックの前に作動するということです。
+[`rendered`](http://docs.meteor.com/#template_rendered)コールバックは
+ブラウザでテンプレートがレンダリングされた後に一回だけ実行されます。
+コールバック内で`this`が参照するのは現在のテンプレートインスタンスで
+`this.data`はレンダリングされたオブジェクトデータにアクセスします。
+(この場合はエラー)
 
-これはまさに私たちが望んだことです。
-　（it？）が実行されない場合、エラーはseenとマークされません。
-　これは（it？）がクリアされないということで、
-　 このページでユーザーが私たちが望んでいたようにリダイレクトされた 　　
-と考えられます。
+### バリーデーション
 
-<% note do %>
+これまでのところ、どの種類のフォーム上の検証も強制していません。
+最低でも、私たちは、ユーザーがURLとその新しいポストのタイトルの両方を提供したいと思います。
+それでは、彼らがそれを行うことを確認してみましょう。
 
-### The `rendered` callback
+私たちは、欠落しているフィールドに二つのことをします。
+最初は、私たちはあらゆる問題のあるフォームフィールドの親要素`div`に
+`has-error` CSSクラスを付与します。
+次に、フィールドの下に有用なエラーメッセージを表示させます。
 
-レンダリングされたコールバックはブラウザでレンダリングされたテンプレートを
-引き起こします。
-　コールバックの中で、this は現在のテンプレートインスタンスを参照するので、
-　私たちは　this.dataで現在レンダリングされているオブジェクトのデータにアクセスすることができます。　
+開始します。まずは新しいヘルパーを受け入れるために
+`postSubmit`テンプレートを下準備しましょう：
 
-ふう！　ユーザーが見ないようにするのは大仕事でしたね！
+~~~html
+<template name="postSubmit">
+  <form class="main form">
+    <div class="form-group {{errorClass 'url'}}">
+      <label class="control-label" for="url">URL</label>
+      <div class="controls">
+          <input name="url" id="url" type="text" value="" placeholder="Your URL" class="form-control"/>
+          <span class="help-block">{{errorMessage 'url'}}</span>
+      </div>
+    </div>
+    <div class="form-group {{errorClass 'title'}}">
+      <label class="control-label" for="title">Title</label>
+      <div class="controls">
+          <input name="title" id="title" type="text" value="" placeholder="Name your post" class="form-control"/>
+          <span class="help-block">{{errorMessage 'title'}}</span>
+      </div>
+    </div>
+    <input type="submit" value="Submit" class="btn btn-primary"/>
+  </form>
+</template>
+~~~
+<%= caption "client/templates/posts/post_submit.html" %>
+<%= highlight "3,7,10,14" %>
 
-<% end %>
+私たちは（`title`と`url`それぞれ）各ヘルパーにパラメータを渡していることに注意してください。
+これは、パラメータに基づいてその動作を変更する、同じヘルパーの両方のリソースを再利用できます。
+
+ここからが楽しいところです:これらのヘルパーを実際に作っていきます。
+
+あらゆる潜在的なエラーメッセージを含む`postSubmitErrors`オブジェクトを格納するために**セッション**を使用します。
+ユーザーがフォームと対話するように、このオブジェクトは順番にリアクティブに変化していき、
+フォームのマークアップと内容を更新します。
+
+まず、`postSubmit`テンプレートが作成されるたびにオブジェクトを初期化します。
+これにより、ユーザはこのページへの前回の訪問から残された古いエラーメッセージが表示されないことが保証されます。
+
+次に、2つのテンプレートヘルパーを定義します。
+彼らは両方の`Session.get('postSubmitErrors')`の`field`プロパティを見ます。
+（`field`は`url`または`title`の事です。ヘルパーを呼んでいる場所に応じて変わります）
+
+`errorMessage`は、単にメッセージ自体を返します。
+`errorClass`はメッセージの*有無*をチェックしメッセージが存在する場合、
+`has-error`を返します。
+
+~~~js
+Template.postSubmit.created = function() {
+  Session.set('postSubmitErrors', {});
+}
+
+Template.postSubmit.helpers({
+  errorMessage: function(field) {
+    return Session.get('postSubmitErrors')[field];
+  },
+  errorClass: function (field) {
+    return !!Session.get('postSubmitErrors')[field] ? 'has-error' : '';
+  }
+});
+~~~
+<%= caption "client/templates/posts/post_submit.js" %>
+
+これらのヘルパーは、ブラウザのコンソールを開き、
+次のコードを入力することで正常に動作していることをテストできます。:
+
+~~~js
+Session.set('postSubmitErrors', {title: 'Warning! Intruder detected. Now releasing robo-dogs.'});
+~~~
+<%= caption "Browser console" %>
+
+<%= screenshot "9-4", "Red alert! Red alert!" %>
+
+次のステップは、`postSubmitErrors`セッションオブジェクトをフォームにフックします。
+
+その前に、`post`オブジェクトを見て`posts.js`で新しい `validatePost`関数を作成し、
+関連するすべてのエラーを含む` errors`オブジェクトを返します。
+(すなわち、`title`か`url`フィールドが欠落しているかどうかを判定します):
+
+~~~js
+//...
+
+validatePost = function (post) {
+  var errors = {};
+
+  if (!post.title)
+    errors.title = "Please fill in a headline";
+
+  if (!post.url)
+    errors.url =  "Please fill in a URL";
+
+  return errors;
+}
+
+//...
+~~~
+<%= caption "lib/collections/posts.js" %>
+<%= highlight "3~13" %>
+
+`postSubmit`イベントヘルパーから関数を呼び出します。
+
+~~~js
+Template.postSubmit.events({
+  'submit form': function(e) {
+    e.preventDefault();
+
+    var post = {
+      url: $(e.target).find('[name=url]').val(),
+      title: $(e.target).find('[name=title]').val()
+    };
+
+    var errors = validatePost(post);
+    if (errors.title || errors.url)
+      return Session.set('postSubmitErrors', errors);
+
+    Meteor.call('postInsert', post, function(error, result) {
+      // display the error to the user and abort
+      if (error)
+        return throwError(error.reason);
+
+      // show this result but route anyway
+      if (result.postExists)
+        throwError('This link has already been posted');
+
+      Router.go('postPage', {_id: result._id});
+    });
+  }
+});
+~~~
+<%= caption "client/templates/posts/post_submit.js" %>
+<%= highlight "10~12" %>
+
+何らかのエラーが存在する場合、どこかにこの値を返す為ではなく、
+ヘルパーの実行を中止するために `return`を使用していることに注意してください。
+
+<%= screenshot "9-5", "Caught red-handed." %>
+
+### サーバサイド・バリデーション
+
+まだ終わってはいません。*クライアント*サイドでのURLとタイトルのバリデーション表示をできました。
+しかし*サーバ*サイドはどうでしょう？
+結局のところ、手動でブラウザコンソールから`postInsert`メソッドを呼び出すことによって、
+空のポストを入力を試みることができます。
+
+サーバー上ですべてのエラーメッセージを表示する必要がないにもかかわらず、
+同じ `validatePost`機能を利用することができます。
+イベントヘルパーではなく、`postInsert`*メソッド*内からそれを呼ぶことにします。
+
+~~~js
+Meteor.methods({
+  postInsert: function(postAttributes) {
+    check(this.userId, String);
+    check(postAttributes, {
+      title: String,
+      url: String
+    });
+
+    var errors = validatePost(postAttributes);
+    if (errors.title || errors.url)
+      throw new Meteor.Error('invalid-post', "You must set a title and URL for your post");
+
+    var postWithSameLink = Posts.findOne({url: postAttributes.url});
+    if (postWithSameLink) {
+      return {
+        postExists: true,
+        _id: postWithSameLink._id
+      }
+    }
+
+    var user = Meteor.user();
+    var post = _.extend(postAttributes, {
+      userId: user._id,
+      author: user.username,
+      submitted: new Date()
+    });
+
+    var postId = Posts.insert(post);
+
+    return {
+      _id: postId
+    };
+  }
+});
+~~~
+<%= caption "lib/collections/posts.js" %>
+<%= highlight "9~11" %>
+
+繰り返しますが、ユーザーは通常このメッセージ「You must set a title and URL for your post(投稿のタイトルとURLを設定する必要があります)」を参照する必要はないようにしてください。
+誰かが苦労してまとめたユーザーインターフェースをバイパスすることを望んでいる、
+と代わりに直接コンソールを使用している場合、それは表示されます。
+
+これをテストするには、ブラウザコンソールを開き、URLを空欄で投稿を入力してみてください:
+
+~~~js
+Meteor.call('postInsert', {url: '', title: 'No URL here!'});
+~~~
+
+適切に仕事をしていれば、「You must set a title and URL for your post」というメッセージとともに、
+恐ろしげなコードがたくさん返ってきます。
+
+<%= commit "9-4", "Validate post contents on submission." %>
+
+### 編集のバリデーション
+
+さっさと済ませるために、投稿*編集*フォームに同じ検証を適用します。
+コードはかなりの量になります。まず、テンプレート:
+
+~~~html
+<template name="postEdit">
+  <form class="main form">
+    <div class="form-group {{errorClass 'url'}}">
+      <label class="control-label" for="url">URL</label>
+      <div class="controls">
+          <input name="url" id="url" type="text" value="{{url}}" placeholder="Your URL" class="form-control"/>
+          <span class="help-block">{{errorMessage 'url'}}</span>
+      </div>
+    </div>
+    <div class="form-group {{errorClass 'title'}}">
+      <label class="control-label" for="title">Title</label>
+      <div class="controls">
+          <input name="title" id="title" type="text" value="{{title}}" placeholder="Name your post" class="form-control"/>
+          <span class="help-block">{{errorMessage 'title'}}</span>
+      </div>
+    </div>
+    <input type="submit" value="Submit" class="btn btn-primary submit"/>
+    <hr/>
+    <a class="btn btn-danger delete" href="#">Delete post</a>
+  </form>
+</template>
+~~~
+<%= caption "client/templates/posts/post_edit.html" %>
+<%= highlight "3,7,10,14" %>
+
+そしてテンプレートヘルパー：
+
+~~~js
+Template.postEdit.created = function() {
+  Session.set('postEditErrors', {});
+}
+
+Template.postEdit.helpers({
+  errorMessage: function(field) {
+    return Session.get('postEditErrors')[field];
+  },
+  errorClass: function (field) {
+    return !!Session.get('postEditErrors')[field] ? 'has-error' : '';
+  }
+});
+
+Template.postEdit.events({
+  'submit form': function(e) {
+    e.preventDefault();
+
+    var currentPostId = this._id;
+
+    var postProperties = {
+      url: $(e.target).find('[name=url]').val(),
+      title: $(e.target).find('[name=title]').val()
+    }
+
+    var errors = validatePost(postProperties);
+    if (errors.title || errors.url)
+      return Session.set('postEditErrors', errors);
+
+    Posts.update(currentPostId, {$set: postProperties}, function(error) {
+      if (error) {
+        // display the error to the user
+        throwError(error.reason);
+      } else {
+        Router.go('postPage', {_id: currentPostId});
+      }
+    });
+  },
+
+  'click .delete': function(e) {
+    e.preventDefault();
+
+    if (confirm("Delete this post?")) {
+      var currentPostId = this._id;
+      Posts.remove(currentPostId);
+      Router.go('postsList');
+    }
+  }
+});
+~~~
+<%= caption "client/templates/posts/post_edit.js" %>
+<%= highlight "1~12,25~27,32" %>
+
+我々は、フォームをサブミット後に行った作業のように、
+また、サーバ上で私たちの投稿を検証したいと思う。
+あなたは投稿を編集するメソッドを用意せず、
+クライアントから直接呼び出す`update`を使ったことを覚えているだろうか。
+
+これは、代わりに新しい`deny`コールバックを追加する必要があることを意味します：
+
+~~~js
+//...
+
+Posts.deny({
+  update: function(userId, post, fieldNames, modifier) {
+    var errors = validatePost(modifier.$set);
+    return errors.title || errors.url;
+  }
+});
+
+//...
+~~~
+<%= caption "lib/collections/posts.js" %>
+<%= highlight "3~8" %>
+
+`post`引数は*既存の*ポストを参照していることに注意してください。
+この場合、*更新*が(`Posts.update({$set: {title: ..., url: ...}})`のように)
+`modifier`の `$set`プロパティの内容に`validatePost`を呼んでいる理由を、検証したい。
+`修飾子$set`が`post`オブジェクト全体に` url`と`url`プロパティが含まれているため、
+これが動作します。もちろん、それは部分的な更新が`title`だけだったりに影響を与えたり、
+`url`だけの場合は失敗しますが、実際には問題にはらないでしょう。
+
+あなたは、第二`deny`コールバックに気づくかもしれません。
+複数の`deny`コールバックを追加する場合、
+それらのいずれかが` true`を返した場合、操作は失敗します。
+この場合には、`title` と `url`が更新対象だった場合、
+もうひとつがからでなければ`update`は成功します。
+
+<%= commit "9-5", "Validate post contents when editing." %>
