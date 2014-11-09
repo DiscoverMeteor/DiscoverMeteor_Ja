@@ -3,55 +3,62 @@ title: Errors
 slug: errors
 date: 0009/01/01
 number: 9
-contents: Create a better mechanism for displaying errors and messages.|Learn how to use `Template.rendered` to know when a user has seen an error.|Use a router filter to make sure errors are only seen once.
+points: 10
+photoUrl: http://www.flickr.com/photos/ikewinski/9413892879/
+photoAuthor: Mike Lewinski
+contents: エラーとメッセージを表示するためのより良いメカニズムを作成します。|より厳密なフォームバリデーションを実装します。|ユーザーがエラーを見ているかを知る`Template.rendered`を使用方法を学んでください。
 paragraphs: 31
 version: 1.7
 ---
 
-投稿に問題がある時に、ユーザーに警告をするために単純にブラウザの標準的な　alert() ダイアログを使うことは少々不愉快で、素晴らしいUXに役立つわけではありません。
-　この点をよりよくできます。
+投稿に問題がある時に、
+ユーザーに警告をするために単純にブラウザの標準的な`alert()`ダイアログを使うことは少々不愉快で、
+素晴らしいUXに役立つわけではありません。
+この点をよりよくできます。
 
 多目的で使えるエラーを報告する仕組みを作りましょう。
-　これはユーザーのワークフローを中断することなくユーザーに何が起きているか知らせる上でより良い役割を果たします。
+これはユーザーのワークフローを中断することなくユーザーに何が起きているか知らせる上でより良い役割を果たします。
 
-### Introducing Local Collections
+人気のMacOSアプリに似たウィンドウの右上隅、
+[Growl](http://growl.info/)のような新たなエラーを表示する単純なシステムを実装しようと思います。
 
-サイトの（"flash"？）の領域でユーザーがどのエラーを見ているか把握して、
-　新たにエラーを表示するシンプルなシステムを実装していきます。
-　このUXパターンはユーザーのワークフローを邪魔せずに、私たちがユーザーに何かが起きていると知らせたいときに、役立ちます。
+### ローカルコレクションの紹介
 
-私たちが作るものは Ruby on Rails アプリでよく見かける flash メッセージに似ていますが、
-　（more subtle？）です。　（it？）はクライアントサイドで実装され、ユーザーがメッセージを見ている時を　（ know？）
+始めるにあたり、私たちのエラーを格納するコレクションを作成する必要があります。
+エラーは、現在のセッションにのみ関連し、永続的である必要はないことを考えると、
+新しい何かをする、*ローカルコレクション*を作成しようと思います。
 
-まず初めに、私たちは　エラーを格納するコレクションを作ります。
-　エラーはカレントセッションに関連するだけで、永続的である必要がないことを考えると、私たちは何か新しいことをして、ローカルコレクションを作っていくことになります。
-　これが意味することは、Errorsコレクションはブラウザだけに機能して、サーバーとは同期しないということです。
-
-このようにするために、私たちはコレクションの名前をnullに設定して、クライアントだけのファイルにエラーを作ります。
-　私たちは新しいローカルコレクションにエラーを挿入するthrowError関数を作ります。
+上記を達成するために、我々は`client`ディレクトリ内のエラーを作成します。
+（このコレクションのデータはサーバー側のデータベースに保存されることはありません）
+そのMongoDBのコレクション名が`null`に設定します（クライアント専用のコレクションを作ります。）
 
 ~~~js
 // Local (client-only) collection
-Errors = new Meteor.Collection(null);
+Errors = new Mongo.Collection(null);
 ~~~
 <%= caption "client/helpers/errors.js" %>
 
-これでコレクションが作られたので、私たちはこのコレクションにエラーの追加を呼び出すthrowError関数を入れることができます。
-　私たちは allow や deny などに気にする必要がありません。というのも、これはローカルコレクションで、MongoDBに保存されていないからです。
+これでコレクションが作られたので、
+私たちはこのコレクションにエラーの追加を呼び出す`throwError`関数を入れることができます。
+私たちは`allow`や`deny`などのセキュリテイを気にする必要がありません。
+というのも、このコレクションは「ローカル」で、MongoDBに保存されていないからです。
 
 ~~~js
 throwError = function(message) {
-  Errors.insert({message: message})
-}
+  Errors.insert({message: message});
+};
 ~~~
 <%= caption "client/helpers/errors.js" %>
 
-エラーを格納するためにローカルコレクションを使うことの利点は、すべてのコレクションと同様に、リアクティブだからです。
-つまり、私たちは他のコレクションデータを表示するのと同じように （declaratively＝宣言的に？）エラーを表示することができます。
+エラーを格納するためにローカルコレクションを使うことの利点は、
+すべてのコレクションと同様に、リアクティブだからです。
+つまり、私たちは他のコレクションデータを表示するのと同じように
+リアクティブにエラーを表示することができます。
 
-### Displaying errors
 
-メインレイアウトの（ top of？）でエラーを表示していきます。
+### エラー表示
+
+メインレイアウトの上部でエラーを表示していきます:
 
 ~~~html
 <template name="layout">
@@ -59,19 +66,19 @@ throwError = function(message) {
     {{> header}}
     {{> errors}}
     <div id="main" class="row-fluid">
-      {{yield}}
+      {{> yield}}
     </div>
   </div>
 </template>
 ~~~
-<%= caption "client/views/application/layout.html" %>
-<%= highlight "7" %>
+<%= caption "client/templates/application/layout.html" %>
+<%= highlight "4" %>
 
-errors.html 内に、エラーとエラーテンプレートを作りましょう：
+errors.html 内に、`errors` and `error` テンプレートを作りましょう：
 
 ~~~html
 <template name="errors">
-  <div class="errors row-fluid">
+  <div class="errors">
     {{#each errors}}
       {{> error}}
     {{/each}}
@@ -79,24 +86,25 @@ errors.html 内に、エラーとエラーテンプレートを作りましょ�
 </template>
 
 <template name="error">
-  <div class="alert alert-error">
+  <div class="alert alert-danger" role="alert">
     <button type="button" class="close" data-dismiss="alert">&times;</button>
     {{message}}
   </div>
 </template>
 ~~~
-<%= caption "client/views/includes/errors.html" %>
+<%= caption "client/templates/includes/errors.html" %>
 
 <% note do %>
 
-### Twin Templates
+### ２つのテンプレート
 
 私たちが２つのテンプレートを１つのファイルに置いていることにお気づきでしょう。
-　今まで私たちは　「１つのファイルに１つのテンプレート」という慣習を支持してきましたが、
-　Meteorに関する限りでは、１つのファイルにすべてのテンプレートを置くこともできます。
+今まで私たちは　「１つのファイルに１つのテンプレート」という慣習を支持してきましたが、
+Meteorに関する限りでは、１つのファイルにすべてのテンプレートを置くこともできます。
+(混乱を招くことになりますがずべてを`main.html`に収めることすらできます！)
 
 この場合、両方のerrorテンプレートはとても短いので、
-　私たちはリポジトリを少しきれいにしておくために、例外として同じファイルにerrorテンプレートを置きました。　
+私たちはリポジトリを少しきれいにしておくために、例外として同じファイルにerrorテンプレートを置きました。　
 
 <% end %>
 
@@ -109,19 +117,50 @@ Template.errors.helpers({
   }
 });
 ~~~
-<%= caption "client/views/includes/errors.js" %>
+<%= caption "client/templates/includes/errors.js" %>
+
+
+実はすでに新しいエラーメッセージを手動で試すことができます。
+以下のようにブラウザコンソールでタイプするだけです。:
+
+~~~js
+throwError("I'm an error!");
+~~~
+
+<%= screenshot "9-1", "Testing error messages." %>
 
 <%= commit "9-1", "Basic error reporting." %>
 
-### Creating errors
+<% note do %>
 
-私たちはエラーを表示する方法を知っていますが、（anything？）を見る前に　（ some？）を作る必要があります。
-　ユーザーが新しい投稿を入れることで、エラーは最も普遍的に引き起こされるので、（ post creation？）コールバックでエラーをチェックして、（ get raised？）されたあらゆるエラーメッセージを表示します。
+### 2種類のエラー
 
-さらに、302 error（これは　同じURLの投稿がすでに存在していることを示しています。）を（get？＝取得？）したら、
-　すでに存在している投稿にユーザーをリダイレクトします。
-　私たちはerror.details から　すでに存在している投稿の　_idを得ています
-　（私たちが7章で（as the third  our Error class？）のdetails引数として投稿の_idを渡したことを思い出しましょう。）
+この時点で、「アプリレベル」エラーと「コードレベル」のエラーとを区別することは重要です。
+
+
+**アプリレベル**エラーは、一般的にユーザがトリガーとなり、
+ユーザーが順番にそれらに基づいて行動していきます。
+これらは、検証エラー、権限エラー、「Not Found.」エラーなどというものです。
+これらはユーザーが遭遇した瞬間に問題が解決するのを助けるために、
+ユーザーに表示するエラーの一種です。
+
+**コードレベル**エラーは、上記以外の種類で、予想外にあなたのコード内の実際のバグがトリガーで、
+おそらく直接ユーザーに、*見せたくない*部分です。
+その代わりに、サードパーティのエラー追跡サービスがいくつかありますのでそれらで追跡することになります。
+(例えば[Kadira](http://kadira.io))
+
+
+この章で取り扱うバグは、アプリレベルエラーのタイプに焦点を当てます。
+
+<% end %>
+
+### エラーの作成
+
+今、エラーを表示する方法を知りましたが、私たちは何かを表示する前に、
+表示するためのトリガーを必要としています。
+でも、実はすでに良好なエラーのシナリオを実装しています。:重複した投稿の警告です。
+単純に`postSubmit`イベントヘルパー内の`alert`呼び出しを、
+新しい`throwError`関数に置き換えるだけです。:
 
 ~~~js
 Template.postSubmit.events({
@@ -130,37 +169,147 @@ Template.postSubmit.events({
 
     var post = {
       url: $(e.target).find('[name=url]').val(),
-      title: $(e.target).find('[name=title]').val(),
-      message: $(e.target).find('[name=message]').val()
-    }
+      title: $(e.target).find('[name=title]').val()
+    };
 
-    Meteor.call('post', post, function(error, id) {
-      if (error) {
-        // display the error to the user
-        throwError(error.reason);
+    Meteor.call('postInsert', post, function(error, result) {
+      // display the error to the user and abort
+      if (error)
+        return throwError(error.reason);
 
-        if (error.error === 302)
-          Router.go('postPage', {_id: error.details})
-      } else {
-        Router.go('postPage', {_id: id});
-      }
+      // show this result but route anyway
+      if (result.postExists)
+        throwError('This link has already been posted');
+
+      Router.go('postPage', {_id: result._id});
     });
   }
 });
 ~~~
-<%= caption "client/views/posts/post_submit.js" %>
-<%= highlight "12~14, 16~21" %>
+<%= caption "client/templates/posts/post_submit.js" %>
+<%= highlight "13,17" %>
+
+さらに`postEdit`イベントヘルパーにも同じことをします。
+
+~~~js
+Template.postEdit.events({
+  'submit form': function(e) {
+    e.preventDefault();
+
+    var currentPostId = this._id;
+
+    var postProperties = {
+      url: $(e.target).find('[name=url]').val(),
+      title: $(e.target).find('[name=title]').val()
+    }
+
+    Posts.update(currentPostId, {$set: postProperties}, function(error) {
+      if (error) {
+        // display the error to the user
+        throwError(error.reason);
+      } else {
+        Router.go('postPage', {_id: currentPostId});
+      }
+    });
+  },
+  //...
+});
+~~~
+<%= caption "client/templates/posts/post_edit.js" %>
+<%= highlight "15" %>
 
 <%= commit "9-2", "Actually use the error reporting." %>
 
-試してましょう：http://meteor.comのURLを入力して投稿を作ってみましょう。このURLがすでに（in the fixtures？）に投稿が（attached＝存在）していたら、 このように表示されます。
+Give it a try: try creating a post and entering the URL `http://meteor.com`. As this URL is already attached to a post in the fixtures, you should see:
+
+試してましょう：URLに`http://meteor.com`を入力して投稿を作ってみましょう。
+このURLがすでに固定ファイルの投稿情報に入っているため、このように表示されるはずです。
 
 <%= screenshot "9-1", "Triggering an error" %>
 
-### Clearing Errors
+### エラーの削除
+
+数秒後にエラーメッセージは消えていきます。
+これは、私たちはこの本の冒頭に戻ればわかりますが、追加のスタイルシートに含まれたCSSマジックの小辺に
+実際にあります。
+
+~~~css
+@keyframes fadeOut {
+  0% {opacity: 0;}
+  10% {opacity: 1;}
+  90% {opacity: 1;}
+  100% {opacity: 0;}
+}
+
+//...
+
+.alert {
+  animation: fadeOut 2700ms ease-in 0s 1 forwards;
+  //...
+}
+~~~
+<%= caption "client/stylesheets/style.css" %>
+
+
+opacityプロパティのための4つのキーフレームを指定する`fadeOut` CSSアニメーション
+（0％、10％、90％、100%を設定）を定義し、
+`.alert`クラスにこのアニメーションを適用しています。
+
+アニメーションは、2700ミリ秒の合計に対して実行され`ease-in`タイミングの式を使用します。
+一度だけ実行0秒の遅延で実行し、それが実行されてたら、最後のキーフレームに滞在します。
+
+<% note do %>
+
+### アニメーション vs アニメーション
+
+Meteor自身が制御アニメーションを行わず、
+(あらかじめ決められ、我々のアプリのコントロールの外にある)、
+CSSベースのアニメーションを使用していることに不思議に思われるかもしれません。
+
+Meteorは挿入アニメーションのサポートを提供しませんが、
+我々はエラーに集中するためにこの章を使っています。だから我々は今のところ「イマイチ」なCSSアニメーションを使用しますし、
+我々はアニメーションの章のための派手なものを残しておきます。
+
+<% end %>
+
+これは動作しますが、複数のエラーをトリガします。
+（例えば、同じリンクを3回提出する等を試してみてください。）
+それらが互いの上に積み重ね取得していることに気付きますか。
+
+
+<%= screenshot "9-3", "Stack overflow." %>
+
+This is because while the `.alert` elements are disappearing *visually*, they're still present in the DOM. We need to fix this.
+
+This is exactly the kind of situation where Meteor shines. Since the `Errors` collection is reactive, all we need to do to get rid of these old errors is remove them from the collection!
+
+We'll use `Meteor.setTimeout` to specify a callback function to be executed after the timeout (in this case, 3000 milliseconds) expires.
+
+~~~js
+Template.errors.helpers({
+  errors: function() {
+    return Errors.find();
+  }
+});
+
+Template.error.rendered = function() {
+  var error = this.data;
+  Meteor.setTimeout(function () {
+    Errors.remove(error._id);
+  }, 3000);
+};
+~~~
+<%= caption "client/templates/includes/errors.js" %>
+<%= highlight "7~12" %>
+
+<%= commit "9-3", "Clear errors after 3 seconds." %>
+
+The [`rendered`](http://docs.meteor.com/#template_rendered) callback triggers once our template has been rendered in the browser. Inside the callback, `this` refers to the current template instance, and `this.data` lets us access the data of the object that is currently being rendered (in our case, an error).
+
+
 
 現在のところ、エラーのクローズボタンをクリックすると、エラーが消えます。
-　これはクローズボタンがTwitter Bootstrapに埋め込まれた JavaScript　を引き起こすからです。
+これはクローズボタンがTwitter Bootstrapに埋め込まれた JavaScript　を引き起こすからです。
 
 しかし、Bootstrapは DOMからエラー<div>を削除しますが、
 　Meteorコレクションからエラーオブジェクトを削除しません。
