@@ -1,69 +1,95 @@
 ---
-title: Creating a Meteorite Package
-slug: creating-a-meteorite-package
+title: Creating a Meteor Package
+slug: creating-a-meteor-package
 date: 0009/01/02
 number: 9.5
+points: 10
 sidebar: true
-contents: Write a local in-app package.|Write some tests for your package.|Release your package on Atmosphere.
+photoUrl: http://www.flickr.com/photos/rxb/7779426142/
+photoAuthor: Richard
+contents: アプリ内でパッケージを書く|パッケージのためにテストを書く|Atmosphereにパッケージを公開する
 paragraphs: 22
 version: 1.7
 ---
+私たちは、エラーが動作して再利用可能なパターンを構築しましたので、
+スマートパッケージにそれをパッケージ化し、
+Meteorのコミュニティとそれを共有しませんか？
 
-////
+開始するには、我々はMeteorデベロッパーアカウントを持っていることを確認する必要があります。
+[meteor.com](meteor.com)にて作れます。
+ですがこの本のためにサインアップしたときは、すでにそのようにしたかもしれません！
+いずれの場合でも、この章で、アカウントを頻繁に使用するので、
+ユーザ名が何であるかを把握する必要があります。
 
-////
+この章では、ユーザ名`tmeasday`を使用します - あなた自身のアカウントに置き換えてください。
 
-////
+まず、パッケージのためのいくつかの構造を作成する必要があります。
+これを行うには、 `meteor create --package tmeasday:errors`コマンドを使用します。
+Meteorは`packages/tmeasday:errors/`というフォルダ名を作成し、
+内部のいくつかのファイルを作成することに注意してください。
+ファイル`package.js`を編集するところから始めます。
+それは、パッケージをどのように使用するかのMeteorを知らせ、
+オブジェクトもしくは関数を必要とあれば、エクスポートします。
 
 ~~~js
 Package.describe({
-  summary: "A pattern to display application errors to the user"
+  name: "tmeasday:errors",
+  summary: "A pattern to display application errors to the user",
+  version: "1.0.0"
 });
 
-Package.on_use(function (api, where) {
+Package.onUse(function (api, where) {
+  api.versionsFrom('0.9.0');
+
   api.use(['minimongo', 'mongo-livedata', 'templating'], 'client');
 
-  api.add_files(['errors.js', 'errors_list.html', 'errors_list.js'], 'client');
-  
-  if (api.export) 
+  api.addFiles(['errors.js', 'errors_list.html', 'errors_list.js'], 'client');
+
+  if (api.export)
     api.export('Errors');
 });
 ~~~
-<%= caption "packages/errors/package.js" %>
+<%= caption "packages/tmeasday:errors/package.js" %>
 
-////
+実世界の使用のためにパッケージを開発するとき、
+あなたレポジトリのGitのURLで`Package.describe`ブロックの`git`セクションを埋めるのは
+良い練習になります。（例えば`https://github.com/tmeasday/meteor-errors.git`）
+ユーザーがソースコードを読むことができます、そして、(あなたがGitHubを使っているなら)
+AtmosphereにあなたのパッケージのReadmeが表示されます。
+
+パッケージに3つのファイルを追加してみましょう。私たちは、いくつかの適切な名前空間と
+少しのクリーナーAPIを除きあまり変化せずにMicroscopeからこれらのファイルを引き抜くことができます。
+（Meteor配下のコードを削除し共通化できるということです）：
 
 ~~~js
 Errors = {
   // Local (client-only) collection
-  collection: new Meteor.Collection(null),
-  
+  collection: new Mongo.Collection(null),
+
   throw: function(message) {
     Errors.collection.insert({message: message, seen: false})
-  },
-  clearSeen: function() {
-    Errors.collection.remove({seen: true});
   }
 };
-
 ~~~
-<%= caption "packages/errors/errors.js" %>
+<%= caption "packages/tmeasday:errors/errors.js" %>
 
 ~~~html
 <template name="meteorErrors">
-  {{#each errors}}
-    {{> meteorError}}
-  {{/each}}
+  <div class="errors">
+    {{#each errors}}
+      {{> meteorError}}
+    {{/each}}
+  </div>
 </template>
 
 <template name="meteorError">
-  <div class="alert alert-error">
+  <div class="alert alert-danger" role="alert">
     <button type="button" class="close" data-dismiss="alert">&times;</button>
     {{message}}
   </div>
 </template>
 ~~~
-<%= caption "packages/errors/errors_list.html" %>
+<%= caption "packages/tmeasday:errors/errors_list.html" %>
 
 ~~~js
 Template.meteorErrors.helpers({
@@ -74,45 +100,43 @@ Template.meteorErrors.helpers({
 
 Template.meteorError.rendered = function() {
   var error = this.data;
-  Meteor.defer(function() {
-    Errors.collection.update(error._id, {$set: {seen: true}});
-  });
+  Meteor.setTimeout(function () {
+    Errors.collection.remove(error._id);
+  }, 3000);
 };
 ~~~
-<%= caption "packages/errors/errors_list.js" %>
+<%= caption "packages/tmeasday:errors/errors_list.js" %>
 
-### Testing the package out with Microscope
+### Microscopeでパッケージをテスト
 
-////
+今、私たちは、変更されたコードが動作することを確認するために、
+Microscopeを使用してローカルにテストします。
+私たちのプロジェクトにパッケージをリンクするために、我々は`meteor add tmeasday:errors`を実行します。
+その後、新しいパッケージにより冗長化されてきた既存のファイルを削除する必要があります。
 
 ~~~bash
-$ rm client/helpers/errors.js
-$ rm client/views/includes/errors.html
-$ rm client/views/includes/errors.js
+rm client/helpers/errors.js
+rm client/templates/includes/errors.html
+rm client/templates/includes/errors.js
 ~~~
 <%= caption "removing old files on the bash console" %>
 
-////
-
-~~~js
-Router.before(function() { Errors.clearSeen(); });
-~~~
-<%= caption "lib/router.js" %>
+もう一つ行う事は適切なAPIを使用するためにいくつかのマイナーなアップデートをすることです：
 
 ~~~html
   {{> header}}
   {{> meteorErrors}}
 ~~~
-<%= caption "client/views/application/layout.html" %>
+<%= caption "client/templates/application/layout.html" %>
 
 ~~~js
-Meteor.call('post', post, function(error, id) {
+Meteor.call('postInsert', post, function(error, id) {
   if (error) {
     // display the error to the user
     Errors.throw(error.reason);
 
 ~~~
-<%= caption "client/views/posts/post_submit.js" %>
+<%= caption "client/templates/posts/post_submit.js" %>
 
 ~~~js
 Posts.update(currentPostId, {$set: postProperties}, function(error) {
@@ -120,128 +144,98 @@ Posts.update(currentPostId, {$set: postProperties}, function(error) {
     // display the error to the user
     Errors.throw(error.reason);
 ~~~
-<%= caption "client/views/posts/post_edit.js" %>
+<%= caption "client/templates/posts/post_edit.js" %>
 
 <%= scommit "9-5-1", "Created basic errors package and linked it in." %>
 
-////
+これらの変更が行われた後、私たちは私たちのオリジナルのプレパッケージの振る舞いが戻ってるはずです。
 
-### Writing tests
+### テストを書く
 
-////
+パッケージを開発する際の最初のステップで、アプリケーションに対してテストしてますが、
+次は正常にパッケージの動作をテストするテストスイートを書きます。
+Meteorに付属しているTinytest(パッケージ用に作られました。)を使います。
+これは簡単にテストを実行でき、他の人とパッケージを共有するときに心の平和を維持することを可能にします。
 
-////
+いくつかのテストを実行するためにTinytestを使用してテストファイルを作成してみましょう：
 
 ~~~js
-Tinytest.add("Errors collection works", function(test) {
+Tinytest.add("Errors - collection", function(test) {
   test.equal(Errors.collection.find({}).count(), 0);
-  
+
   Errors.throw('A new error!');
   test.equal(Errors.collection.find({}).count(), 1);
-  
+
   Errors.collection.remove({});
 });
 
-Tinytest.addAsync("Errors template works", function(test, done) {  
+Tinytest.addAsync("Errors - template", function(test, done) {
   Errors.throw('A new error!');
-  test.equal(Errors.collection.find({seen: false}).count(), 1);
-  
+  test.equal(Errors.collection.find({}).count(), 1);
+
   // render the template
-  OnscreenDiv(Spark.render(function() {
-    return Template.meteorErrors();
-  }));
-  
-  // wait a few milliseconds
+  UI.insert(UI.render(Template.meteorErrors), document.body);
+
   Meteor.setTimeout(function() {
-    test.equal(Errors.collection.find({seen: false}).count(), 0);
-    test.equal(Errors.collection.find({}).count(), 1);
-    Errors.clearSeen();
-    
-    test.equal(Errors.collection.find({seen: true}).count(), 0);
+    test.equal(Errors.collection.find({}).count(), 0);
     done();
-  }, 500);
+  }, 3500);
 });
 ~~~
-<%= caption "packages/errors/errors_tests.js" %>
+<%= caption "packages/tmeasday:errors/errors_tests.js" %>
 
-////
+テストで基本的な`Meteor.Errors`関数の動きをチェックします。
+同様にテンプレート内で`rendered`コードがまだ機能している事をダブルチェックします。
 
-////
+我々は、（APIがまだ確定しておらず改変の可能性があるため）ここでMeteorパッケージテストを書く詳細をカバーしていませんが、
+うまくいけばそれがどのように動作するか、かなり自明にできます。
 
-////
+Meteorが`package.js`でテストをどのように動かすか指示可能です。以下のコードを確認ください。:
 
 ~~~js
-Package.on_test(function(api) {
-  api.use('errors', 'client');
-  api.use(['tinytest', 'test-helpers'], 'client');  
-  
-  api.add_files('errors_tests.js', 'client');
+Package.onTest(function(api) {
+  api.use('tmeasday:errors', 'client');
+  api.use(['tinytest', 'test-helpers'], 'client');
+
+  api.addFiles('errors_tests.js', 'client');
 });
 ~~~
-<%= caption "packages/errors/package.js" %>
+<%= caption "packages/tmeasday:errors/package.js" %>
 
 <%= scommit "9-5-2", "Added tests to the package." %>
 
-////
+以下のようにテストを動かします。
 
 ~~~bash
-$ meteor test-packages errors
+meteor test-packages tmeasday:errors
 ~~~
 <%= caption "Terminal" %>
 
 <%= screenshot "s7-1", "Passing all tests" %>
 
-### Releasing the package
+### パッケージの置き換え
 
-////
+今、パッケージをリリースし、世界でそれを利用できるようにします。私たちは、
+Meteorのパッケージサーバーにそれをプッシュし、Atmopshereから取得できるようにします。
 
-////
-
-~~~json
-{
-  "name": "errors",
-  "description": "A pattern to display application errors to the user",
-  "homepage": "https://github.com/tmeasday/meteor-errors",
-  "author": "Tom Coleman <tom@thesnail.org>",
-  "version": "0.1.0",
-  "git": "https://github.com/tmeasday/meteor-errors.git",
-  "packages": {
-  }
-}
-~~~
-<%= caption "packages/errors/smart.json" %>
-
-<%= scommit "9-5-3", "Added a smart.json" %>
-
-////
-
-////
-
-////
+幸いなことに、それは非常に簡単です。`cd`で、パッケージのディレクトリに入り、
+`meteor publish --create`を実行します。:
 
 ~~~bash
-$ git init
-$ git add -A
-$ git commit -m "Created Errors Package"
-$ git remote add origin https://github.com/tmeasday/meteor-errors.git
-$ git push origin master
-$ mrt release .
-Done!
+cd packages/tmeasday:errors
+meteor publish --create
 ~~~
-<%= caption "Terminal (run from within `packages/errors`)" %>
+<%= caption "Terminal" %>
 
-////
-
-////
-
-////
+今すぐパッケージがリリースされていることを、プロジェクトから一旦削除して、再度追加し、
+確認することができます。
 
 ~~~bash
-$ rm -r packages/errors
-$ mrt add errors
+rm -r packages/errors
+meteor add tmeasday:errors
 ~~~
 <%= caption "Terminal (run from the top level of the app)" %>
 
 <%= scommit "9-5-4", "Removed package from development tree." %>
 
-////
+今、私たちはMeteorが初めて私達のパッケージをダウンロードし表示されるはずです。よくやった！
