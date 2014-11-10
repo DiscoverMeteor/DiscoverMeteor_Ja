@@ -3,6 +3,7 @@ This is the Japanese version of [Discover Meteor](http://discovermeteor.com).
 Check it out live at http://ja.discovermeteor.com/
 
 ## 翻訳への参加方法
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/DiscoverMeteor/DiscoverMeteor_Ja?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 [レポジトリにissueを追加](https://github.com/DiscoverMeteor/DiscoverMeteor_Ja/issues/new)し、 @SachaG 宛てに参加の意志を伝えてください。英語版のソースへのアクセス権をもらうことができます。
 
