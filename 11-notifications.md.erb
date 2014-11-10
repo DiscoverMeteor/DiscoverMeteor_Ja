@@ -1,30 +1,41 @@
 ---
-title: Notifications
+title: 通知機能
 slug: notifications
 date: 0011/01/01
 number: 11
-contents: Add a notifications collection to notify users of other user's actions.|Learn how to only share the relevant notifications with a given user.|Learn more about Meteor publications and subscriptions.
-paragraphs: 25
-version: 1.7
+points: 10
+photoUrl: http://www.flickr.com/photos/ikewinski/8719868039/
+photoAuthor: Mike Lewinski
+contents: 他のユーザのアクションをユーザーに通知するための通知コレクションを追加します|ユーザと関連する通知のみを共有する方法を学びます|Mateorパブリケーションとサブスクリプションの詳細についてを学びます
+version: 1.7.1
 ---
 
-　これでユーザーはお互いの投稿にコメントできるようになったので、会話が始まったことを知らせると良いでしょう。　
+これでユーザーはお互いの投稿にコメントできるようになったので、
+会話が始まったことを知らせると良いでしょう。　
 
-　そのようにするために、投稿にコメントが付いたことを投稿者に知らせて、そのコメントを見るためのリンクを提供します。
+そのようにするために、投稿にコメントが付いたことを投稿者に知らせて、
+そのコメントを見るためのリンクを提供します。
 
-　これは Meteor の機能がよく輝くところです：
-　Meteor はデフォルトでリアルタイムなので、そうした通知は瞬時に表示されます。
-　ユーザーがページを再読み込みしたり、チェックしたりすることを私たちは待つ必要はありません。
-　特別なコードを書くことなく、新しい通知をポップアップできるからです。　
+これは Meteor の機能がよく輝くところです：
+Meteor はデフォルトでリアルタイムなので、そうした通知は_瞬時_に表示されます。
+ユーザーがページを再読み込みしたり、チェックしたりすることを私たちは待つ必要はありません。
+特別なコードを書くことなく、新しい通知をポップアップできるからです。　
 　
-### Creating notifications
+### 通知を作成
 
-　投稿に誰かがコメントをした時の通知を作っていきます。
-　将来的には、通知を多くのシナリオをカバーするように拡張できますが、
-　今のところはユーザーに何が起きているか知らせることで十分でしょう。
+投稿に誰かがコメントをした時の通知を作っていきます。
+将来的には、通知を多くのシナリオをカバーするように拡張できますが、
+今のところはユーザーに何が起きているか知らせることで十分でしょう。
 
-　では、Notifications コレクションを作っていきましょう。
-　同様に、自分の投稿の新しいコメントごとにマッチする通知を挿入するcreateCommentNotification関数を作っていきます。
+では、`Notifications`コレクションを作っていきましょう。
+自分の投稿の新しいコメントごとにマッチする通知を挿入する
+`createCommentNotification`関数を作っていきます。
+
+Since we'll be updating notifications from the client, we need to make sure our `allow` call is bulletproof. So we'll check that:
+
+- The user making the `update` call owns the notification being modified.
+- The user is only trying to update a single field.
+- That single field is the `read` property of our notifications.
 
 ~~~js
 Notifications = new Meteor.Collection('notifications');
