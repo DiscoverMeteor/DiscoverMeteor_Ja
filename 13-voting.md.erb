@@ -1,51 +1,52 @@
 ---
-title: Voting
+title: 投票機能
 slug: voting
 date: 0013/01/01
 number: 13
-contents: Build a system where users can vote on posts.|Rank our posts by vote on a "best" post page.|Learn how to write a general handlebars helper.|Learn a little more about data security in Meteor.|Cover some interesting performance considerations in MongoDB.
+points: 10
+photoUrl: http://www.flickr.com/photos/ikewinski/8561920811/
+photoAuthor: Mike Lewinski
+contents: Build a system where users can vote on posts.|Rank our posts by vote on a "best" post page.|Learn how to write a general Spacebars helper.|Learn a little more about data security in Meteor.|Cover some interesting performance considerations in MongoDB.
 paragraphs: 49
-version: 1.7
+version: 1.7.1
 ---
 
-　私たちのサイトは　だんだんと一般向けになってきました。
-　ベストのリンクを見つけることはすぐに（ get tricky？）です。
-　私たちが必要なことは、投稿を(order by？)する　ある種のランキングシステムです。
-　
-　私たちは　（ karma？＝karma？）と、時間ベースの（decay of points）と他の多くのこと
-によって、複雑なランキングシステムを作ることができます。
-　（その多くはMicroscopeの兄貴分であるTelescopeでも実装されています。）
-　しかしこのアプリでは、　シンプルにして、投票数で投稿を格付けだけをします。
-　
-　ユーザーに　投稿に投票する方法を提供することから始めていきましょう。
+私たちのサイトは　だんだんと一般向けになってきました。
+今、本サイトは、最高のリンクを見つけ、より人気になっているリンクを取得するのは厄介です。
+記事を並び変えるためのなんらかのランキングシステムが必要です。
 
-### Data Model
+私たちは、カルマ、ポイントの時間ベースの崩壊、
+そして他の多くのものを持つ複雑なランキングシステムを構築することができます。
+(そのほとんどは、Telescope](http://telesc.pe)、Microscopeの兄に実装されています)
+しかしこのアプリでは、シンプルにして、投票数で投稿を格付けることにします。
 
-　私たちは　それぞれの投稿に　（ upvoters？＝賛成者？）を　　格納します。
-　私たちが　ユーザーに賛成票ボタンを　表示するかどうか　知ります。（？？？）　
-　ユーザーが2回投票できないようにします。
+ユーザーに　投稿に投票する方法を提供することから始めていきましょう。
+
+### データモデル
+
+私たちは、私たちがユーザーにupvoteボタンを表示するだけでなく、
+2回投票しているかどうかを知ることができる各投稿毎のupvotersのリストを格納します。
 
 <% note do %>
 
-### Data Privacy & Publications
+### データのプライバシー & パブリケーション
 
-　私たちは　すべのユーザーに　（upvoters？＝賛成投票者？）のリストを　publishします。
-　これでブラウザーコンソールで　自動的にそのデータを公的にアクセスできるようにします。
+私たちは、すべのユーザーに投票者のリストを公開します。
+これでブラウザーコンソールで　自動的にそのデータを公的にアクセスできるようにします。
 
-　これはある種の　データプライバシー問題ですが、これはコレクションが（work？）する（way？）から起因しています。
-　たとえば、私たちは　ユーザーに　誰が投稿に投票したのかわかるようにしたいでしょうか？
-　この場合、　その情報を公的に　利用することは、実際のところ全く影響も及ぼしませんが、
-　この問題を少なくとも認識することは　重要です。
-
-　また　にも気を付けましょう。　私たちがこの情報の一部を制限したい場合に、
-　私たちは　（either？）サーバーサイドで（ that ？）プロパティを削除することで
-　クライアントが　publication のfieldsオプションに干渉しないようにする必要があります。　　
-　また私たちは　（ denormalize？）します　賛成者の
-　　その数字を（retrieve？＝読みだす？）
+これはある種のデータプライバシー問題ですが、
+これはコレクションを動かす方法に起因しています。
+たとえば、私たちはユーザーに誰が投稿に投票したのかわかるようにしたいでしょうか？
+この場合、その情報を公的に利用することは、実際のところ全く影響も及ぼしませんが、
+この問題を少なくとも認識することは重要です。
 
 <% end %>
 
-////
+また、それが簡単に数字を取得するために、
+投稿にupvotersの合計数を非正規化します。
+投稿にupvoters`と` votes`を2つの属性を追加しましょう。
+私たちのfixturesファイルにそれらを追加することから始めましょう。:
+
 
 ~~~js
 // Fixture data
@@ -67,16 +68,17 @@ if (Posts.find().count() === 0) {
     userId: sacha._id,
     author: sacha.profile.name,
     url: 'http://sachagreif.com/introducing-telescope/',
-    submitted: now - 7 * 3600 * 1000,
+    submitted: new Date(now - 7 * 3600 * 1000),
     commentsCount: 2,
-    upvoters: [], votes: 0
+    upvoters: [],
+    votes: 0
   });
 
   Comments.insert({
     postId: telescopeId,
     userId: tom._id,
     author: tom.profile.name,
-    submitted: now - 5 * 3600 * 1000,
+    submitted: new Date(now - 5 * 3600 * 1000),
     body: 'Interesting project Sacha, can I get involved?'
   });
 
@@ -84,7 +86,7 @@ if (Posts.find().count() === 0) {
     postId: telescopeId,
     userId: sacha._id,
     author: sacha.profile.name,
-    submitted: now - 3 * 3600 * 1000,
+    submitted: new Date(now - 3 * 3600 * 1000),
     body: 'You sure can Tom!'
   });
 
@@ -93,9 +95,10 @@ if (Posts.find().count() === 0) {
     userId: tom._id,
     author: tom.profile.name,
     url: 'http://meteor.com',
-    submitted: now - 10 * 3600 * 1000,
+    submitted: new Date(now - 10 * 3600 * 1000),
     commentsCount: 0,
-    upvoters: [], votes: 0
+    upvoters: [],
+    votes: 0
   });
 
   Posts.insert({
@@ -103,9 +106,10 @@ if (Posts.find().count() === 0) {
     userId: tom._id,
     author: tom.profile.name,
     url: 'http://themeteorbook.com',
-    submitted: now - 12 * 3600 * 1000,
+    submitted: new Date(now - 12 * 3600 * 1000),
     commentsCount: 0,
-    upvoters: [], votes: 0
+    upvoters: [],
+    votes: 0
   });
 
   for (var i = 0; i < 10; i++) {
@@ -114,15 +118,16 @@ if (Posts.find().count() === 0) {
       author: sacha.profile.name,
       userId: sacha._id,
       url: 'http://google.com/?q=test-' + i,
-      submitted: now - i * 3600 * 1000,
+      submitted: new Date(now - i * 3600 * 1000 + 1),
       commentsCount: 0,
-      upvoters: [], votes: 0
+      upvoters: [],
+      votes: 0
     });
   }
 }
 ~~~
 <%= caption "server/fixtures.js" %>
-<%= highlight "22, 48, 58, 69" %>
+<%= highlight "22,23,49,50,60,61,72,73" %>
 
 これまで通り、アプリを停止して、meteor resetを実行して、新しいユーザーアカウントを作ります。
 それから、投稿が作成された時に２つのプロパティが初期化されるようにします。
