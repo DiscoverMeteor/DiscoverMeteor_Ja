@@ -1,27 +1,31 @@
 ---
-title: Pagination
+title: ページネーション
 slug: pagination
 date: 0012/01/01
 number: 12
-contents: Learn more about Meteor's subscriptions, and how we can use them to control data.|Implement infinite-style pagination.|Use the `iron-router-progress` package to implement a nifty iOS-style progress bar.|Create a special subscription to deal with direct links to posts page.
+points: 10
+photoUrl: http://www.flickr.com/photos/ikewinski/8625379401/
+photoAuthor: Mike Lewinski
+contents: Meteorのサブスクリプションを使ったデータの操作方法を学びます。|無限に続くスタイルのページネーションを実装します|`iron-router-progress`パッケージでiOSスタイルのプログレスバーを作ります。|投稿ページへの直接リンクを扱う特別なサブスクリプションを作成します。
 paragraphs: 67
-version: 1.7
+version: 1.7.1
 ---
 
-　（Things are looking great with Microscope？）、
-　世界に公開したら、私たちは　（hit reception？）を　見込むことができます。
+見た目がすごいMicroscopeであれば、それが世界にリリースされたとき、大ヒットを期待することができます。
 
-　そのため、私たちは（as it takes off？）時に、サイトの一部になる新しい投稿の数のパフォーマンス（ implication？）について少し考えるべきかもしれません。　　
+ですので、実際にリリースする前に、
+新しい投稿の数によるパフォーマンスの意義について少し考える必要があります！
 
-　これまでに、どのようにクライアントサイドのコレクションが　サーバーのデータの一部を含めるのか説明しました。
-　また、（notification と comments？）コレクションでも同じことを行いました。
+これまでに、どのようにクライアントサイドのコレクションが　サーバーのデータの一部を含めるのか説明しました。
+また、notificationとcommentsコレクションでも同じことを行いました。
 
-　しかし今のところ、まだ私たちは接続しているユーザーに対して、1回の投稿ですべてを  publish しています。
+しかし今のところ、まだ私たちは接続しているユーザーに対して、1回のアクセスでパブリッシュしています。
+リンクが数千掲載されてた場合、最終的には、これは問題になります。
+これを解決するために、我々は我々の記事をページ分割する必要があります。
 
-### Adding More Posts
+### もっとたくさんの投稿を追加します
 
-　最初に、　ページネーションが実際に（make sense？＝意味をなす？）ように、
-　（ fixture？）データに十分な投稿を詰め込みましょう。
+最初に、ページネーションが実際に意味をなすように、`fixture.js`にデータに十分な投稿を詰め込みましょう。:
 
 ~~~js
 // Fixture data
@@ -34,7 +38,7 @@ if (Posts.find().count() === 0) {
     userId: tom._id,
     author: tom.profile.name,
     url: 'http://themeteorbook.com',
-    submitted: now - 12 * 3600 * 1000,
+    submitted: new Date(now - 12 * 3600 * 1000),
     commentsCount: 0
   });
 
@@ -44,7 +48,7 @@ if (Posts.find().count() === 0) {
       author: sacha.profile.name,
       userId: sacha._id,
       url: 'http://google.com/?q=test-' + i,
-      submitted: now - i * 3600 * 1000,
+      submitted: new Date(now - i * 3600 * 1000),
       commentsCount: 0
     });
   }
@@ -53,115 +57,112 @@ if (Posts.find().count() === 0) {
 <%= caption "server/fixtures.js" %>
 <%= highlight "15~24" %>
 
-　meteor reset を実行した後で、このようにすると（ get something？＝何かを得る？）ことでしょう。
+`meteor reset`を実行した後で、アプリを再起動すると、こんな感じになります:
 
 <%= screenshot "12-1", "Displaying dummy data. " %>
 
 <%= commit "12-1", "Added enough posts that pagination is necessary." %>
 
-### Infinite Pagination
+### 無限ページネーション
 
-　私たちは"infinite"スタイルのページネーションを（implementing？）しています。
-　この意味というのは、　私たちが　（ pinned at the bottom？）された“load more”リンクによって、
-　最初にスクリーンに10個の投稿を（ show, say？）するということです。
-　このリンクをクリックすると、さらに10個の投稿をリストに追加し、（so on ad infinitum？）
-　つまり、私たちはスクリーンに表示するための投稿数を１つの引数で（representing？）することで、
-　すべてのページネーションシステムを　コントロールできるということです。　
+私たちは"無限"スタイルのページネーションを実装しています。
+この意味というのは、最初にスクリーンに10個の投稿を表示し、
+下部に“load more”リンクを配置するということです。
+このリンクをクリックすると、さらに10個の投稿をリストに追加し、*際限なく*続きます。
+つまり、画面上に表示する投稿の数を表す単一のパラメータを使用して、
+全体のページネーションシステムを制御できることを意味します。
 
-　この引数がサーバーに（it？）がどれだけの数の投稿をクライアントに　　　
-　　（ send up ？）するかか識別できるように指示する
-　方法が必要となります。
-　（It so happens？）なので、私たちはすでに ルーター（in？＝によって？）posts publication に subscribe しています。
-　そのため、私たちは　これを利用して、ルーターも　ページネーションを（handle？）できるようにします。
+この単一パラメータがサーバーにどれだけの数の投稿をクライアントに送信するか識別できるように指示する方法が必要となります。
+それは、すでにルータの`posts`パブリケーションにサブスクライブしているので、
+これを利用して、ルータに同様にページネーションを処理してもらいます。
 
-　これをセットアップするための最も簡単な方法は、
-　投稿に　 path の引数部分を　制限させることです。
-　http://localhost:3000/25の（form？）のURLを（giving us？）します。
-　他のメソッドを（over？＝超えて？）URL を使うことの追加的なボーナスは、
-　もし　あなたが現在25個の投稿を表示していて、誤ってブラウザーウィンドウをリロード（happen to？）するとしたら、
-　まだ　ページが再びロードされても25個の投稿を見ている　ということです。
+これを設定する最も簡単な方法は、フォームに単純にパスのポストリミットパラメータ部分を設定した`http://localhost:3000/25`のようなURLを与えることです。
+他の方法に比べて、URLを使用することの追加ボーナスは、
+現在25の記事を表示し、誤ってブラウザウィンドウをリロードしてしまっている場合、あなたはまだ、
+再びページが読み込また時に、同じ25の投稿を見ることができる点です。
 
-　これを正しく行うために、私たちは投稿に subscribe する方法を変える必要があります。
-　以前に　Commentsの章で行ったように、
-　私たちは　subscription コードを　ルーターレベルからルートレベルに移行する必要があります。
+これを正しく行うために、私たちは投稿にサブスクリプションする方法を変える必要があります。
+以前に*コメントの作成*の章で行ったように、
+私たちはサブスクリプションのコードを*ルーター*レベルから*ルート*レベルに移行する必要があります。
 
-　これは　一度に　多くのことを　（take？）するのかもしれませんが。
-　コード（with？）きれいにします。
+これは、すべてを一度に取り込むことがたくさんかもしれないが、コードは綺麗になるはずです。
 
-　最初に、私たちは　 Router.configure() ブロック内で  posts publication への subscribe を停止します。
-　といっても、 Meteor.subscribe('posts') を削除するだけで、notifications subscription だけを残します。
+最初に、私たちは`Router.configure()`ブロック内で`posts`パブリケーションへのサブスクリプションを停止します。
+といっても、`Meteor.subscribe('posts')`を削除するだけで、`notifications`サブスクリプションだけを残します。
 
 ~~~js
 Router.configure({
   layoutTemplate: 'layout',
   loadingTemplate: 'loading',
+  notFoundTemplate: 'notFound',
   waitOn: function() {
     return [Meteor.subscribe('notifications')]
   }
 });
 ~~~
 <%= caption "lib/router.js" %>
-<%= highlight "5" %>
+<%= highlight "6" %>
 
 
-　それから（a？） postsLimit引数をルートのパスに追加します。
-　引数の名前の後に（a ?　？）を追加することは、（it's optional？）であることを意味しています。
-　そのため、ルートは　http://localhost:3000/50　にマッチするだけでなく、
-　（plain？）古い http://localhost:3000 にもマッチします。
+それから`postsLimit`引数をルートのパスに追加します。引数の名前の後に`?`を追加することは、オプショナルであることを意味しています。そのため、ルートは`http://localhost:3000/50`にマッチするだけでなく、元の古い`http://localhost:3000`にもマッチします。
 
 ~~~js
-Router.map(function() {
-  //...
+//...
 
-  this.route('postsList', {
-    path: '/:postsLimit?'
-  });
+Router.route('/:postsLimit?', {
+  name: 'postsList',
 });
+
+//...
 ~~~
 <%= caption "lib/router.js" %>
-<%= highlight "5" %>
+<%= highlight "3" %>
 
 
-　/:parameter?（form？）のパスが　すべての（ possible？）パスにマッチしているか着目することは重要です。
-　各ルートは　（it？）が（current path？＝カレントパス？）にマッチしているかどうか見るためにうまく（be parsed ？）されるので、　
-　私たちは（ decreasing specificity？）のためにルートを（organize？）する必要があります。
+`/:parameter?`形式のパスがすべての可能なパスにマッチしているか着目することは重要です。
+各ルートはそれがカレントパスにマッチしているかどうか見るためにうまくパースされるので、特異性を減少させるために、私たちのルートを整理し確認する必要があります。
 
-　言い換えると、　/posts/:_id のような、より（ specific？）なルートを（target？）するルートは、最初に来るべきで、
-　postsList ルートは　ファイルの（bottom？＝下層に？）移すべきです。
-　というのは、（it？）はすべてにとてもマッチするためです。
+言い換えると、`/posts/:_id`のような、より特殊なルートをターゲットするルートは、最初に来るべきで、
+`postsList`ルートはファイルの**下層に**移すべきです。というのは、すべてにちゃんとマッチさせるためです。
 
-　これから subscribe と 正しいデータを見つける上で、（tough？）な問題に取り掛かることなります。
-　私たちはpostsLimit 引数が（present？）されていない場合に対処する必要があるので、
-　私たちは　デフォルトの値を　（it？）に割り当てます。
-　私たちは　ページネーションをいじくるための十分な余地を（really give us？）するために、“5”を使います。
+これからサブスクライブして正しいデータを見つける上で、大変な問題に取り掛かることなります。
+私たちは`postsLimit`引数が存在しない場合に対処する必要があるので、
+私たちは　デフォルトの値をそれに割り当てます。
+私たちはページネーションをいじくるための十分な余地をあたえるために、“5”を使います。
 
 ~~~js
-Router.map(function() {
-  //..
+//...
 
-  this.route('postsList', {
-    path: '/:postsLimit?',
-    waitOn: function() {
-      var postsLimit = parseInt(this.params.postsLimit) || 5;
-      return Meteor.subscribe('posts', {sort: {submitted: -1}, limit: postsLimit});
-    }
-  });
+Router.route('/:postsLimit?', {
+  name: 'postsList',
+  waitOn: function() {
+    var limit = parseInt(this.params.postsLimit) || 5;
+    return Meteor.subscribe('posts', {sort: {submitted: -1}, limit: limit});
+  }
 });
+
+//...
 ~~~
 <%= caption "lib/router.js" %>
-<%= highlight "6~9" %>
+<%= highlight "5~8" %>
 
-　 posts publication の名前と一緒に、私たちが
-　JavaScript オブジェクト ({limit: postsLimit}) を引き渡していることにお気づきでしょう。
-　このオブジェクトは　サーバーサイドの Posts.find() （statement？）への（options？）引数として（serve？）します。
-　　　　このように（ implement？）して、サーバーサイドのコードを（switch over？）しましょう。
+
+`posts`パブリケーションの名前と一緒に、私たちが
+JavaScript オブジェクト`({limit: postsLimit})`を引き渡していることにお気づきでしょう。
+このオブジェクトは　サーバーサイドの`Posts.find()`文への`オプション`引数として使われます。
+このように実装して、サーバーサイドのコードに切り替えてみましょう。
 
 ~~~js
 Meteor.publish('posts', function(options) {
+  check(options, {
+    sort: Object,
+    limit: Number
+  });
   return Posts.find({}, options);
 });
 
 Meteor.publish('comments', function(postId) {
+  check(postId, String);
   return Comments.find({postId: postId});
 });
 
@@ -170,28 +171,27 @@ Meteor.publish('notifications', function() {
 });
 ~~~
 <%= caption "server/publications.js" %>
-<%= highlight "1~3" %>
-
+<%= highlight "1~7" %>
 <% note do %>
 
-### Passing Parameters
+### パラメータを渡す
 
-　publications コードは find()（statement's options？）として（serve？）するために、
-（ in effect？＝効果的に？）　サーバーに
-　クライアントから送られたどのようなJavaScriptオブジェクト（この場合は{limit: postsLimit}）でも（trust？）できる　
-　ように指示を出しています。（？？？）
-　これでブラウザーコンソールでユーザーが好きな（ submit any options？）することが　できるようになります。　　
+パブリケーションコードは`find()`文のオプションとして渡す、
+サーバーにクライアントから送られたどのようなJavaScriptオブジェクト
+（この場合は{limit: postsLimit}）でも信頼するように指示を出しています。
+これでブラウザーコンソールでユーザーが好きなそんなオプションも送信することができるようになります。　　
 
-　この場合、　これは比較的（harmless？）です。
-　というのは、一人のユーザーがするすべてのことは（differently？）に投稿を　（reorder？）することだったり、
-　（in the first place？）で（enable？）したい制限を変えることだからです。
+この場合、これは比較的無害です。
+というのは、一人のユーザーがするすべてのことは違う投稿に再指示することだったり、
+(最初に許可したいなど)したい制限を変えることだからです。
+実際のアプリはおそらく限界を制限する必要があるでしょう！
 
-　publish されていないフィールドでプライベートのデータを格納する時は、このパターンを使うべきではありません。
-　それはユーザーが（ it？）にアクセスするために、フィールドのオプションに（manipulate？）できるためです。
+ありがたいことに、`check()`を使用することにより、我々は、ユーザーが
+（いくつかのケースでは`fields`のような書類上のプライベートデータを公開したいというような）
+こっそり追加のオプションを設定することはできないことを知っています。
 
-　よりセキュアなパターンは　
-　すべてののオブジェクトの代わりに、データの（stay in control of？）を（ make sure？）するために、
-　個別の引数を（themselves？＝自体？）　に渡すことです。（？？？）
+より安全なパターンは、あなたのデータの制御にとどまることを確認するために、
+個々のパラメータ自身の代わりに、オブジェクト全体を渡すことかもしれないです。:
 
 ~~~js
 Meteor.publish('posts', function(sort, limit) {
@@ -201,154 +201,185 @@ Meteor.publish('posts', function(sort, limit) {
 
 <% end %>
 
-　これでルートレベルで  subscribe しているので、
-　同じ場所でデータコンテキストをセットする（ make sense？）します。
-　私たちは　以前のパターンからそれて、
-　シンプルにカーソルを返す代わりに
-　データ関数に　JavaScript オブジェクトを返すようにします。　
-　これで　（we'll call posts？）（named？）データコンテキストを作ることができます。
+今、私たちは、ルートレベルでサブスクライブしており、それはまた、同じ場所でのデータコンテキストを設定するために理にかなっています。
+既存パターンから少し外れますが `data`関数は、単にカーソルを返す代わりにJavaScriptオブジェクトを返すようにします。
+これは、私たちが`posts`と呼ぶことにした*名付けられた*のデータコンテキストを、作成しています。
 
-　これは　単純に
-　テンプレートの中で（ this？）として　間接的に利用できる　代わりに、
-　データコンテキストが（ posts？）で利用できるということです。
+Now that we're subscribing at the route level, it would also make sense to set the data context in the same place. We'll deviate a bit from our previous pattern and make the `data` function return a JavaScript object instead of simply returning a cursor. This lets us create a *named* data context, which we'll call `posts`.
+
+これが意味することは、その代わり、暗黙的にテンプレート内部の`this`は、
+データコンテキストとして`posts`で利用できるようになるということです。
+これとは別に小さな要素から、コードが身近に感じなければならない：
+
+What this means is simply that instead of being implicitly available as `this` inside the template, our data context will be available at `posts`. Apart from this small element, the code should feel familiar:
+
 
 ~~~js
-Router.map(function() {
-  this.route('postsList', {
-    path: '/:postsLimit?',
-    waitOn: function() {
-      var limit = parseInt(this.params.postsLimit) || 5;
-      return Meteor.subscribe('posts', {sort: {submitted: -1}, limit: limit});
-    },
-    data: function() {
-      var limit = parseInt(this.params.postsLimit) || 5;
-      return {
-        posts: Posts.find({}, {sort: {submitted: -1}, limit: limit})
-      };
-    }
-  });
+//...
 
-  //..
+Router.route('/:postsLimit?', {
+  name: 'postsList',
+  waitOn: function() {
+    var limit = parseInt(this.params.postsLimit) || 5;
+    return Meteor.subscribe('posts', {sort: {submitted: -1}, limit: limit});
+  },
+  data: function() {
+    var limit = parseInt(this.params.postsLimit) || 5;
+    return {
+      posts: Posts.find({}, {sort: {submitted: -1}, limit: limit})
+    };
+  }
 });
+
+//...
 ~~~
 <%= caption "lib/router.js" %>
-<%= highlight "8~13" %>
+<%= highlight "9~14" %>
 
-　ルートレベルでデータコンテキストをセットしたので、
-　posts_list.js ファイル内の posts テンプレートヘルパーを安全に取り除くことができます。　
-　私たちはデータコンテキストをヘルパーと同じ名前のpostsと名づけたので、
-　私たちは postsList テンプレートを触る必要がありません。　　
+ルートレベルでデータコンテキストをセットしたので、
+`posts_list.js`ファイル内の`posts`テンプレートヘルパーを安全に取り除くことができます。
+私たちはデータコンテキストをヘルパーと同じ名前の`posts`と名づけたので、
+私たちは`postsList`テンプレートを触る必要がありません!
 
-　（Let's recap？）
-　新しく改良した router.js コードはこのようになっています：
+それではおさらいしてみましょう。ここに私たちの新しい改良`router.js`コードがどのように見えるかです：
 
 ~~~js
 Router.configure({
   layoutTemplate: 'layout',
   loadingTemplate: 'loading',
+  notFoundTemplate: 'notFound',
   waitOn: function() {
     return [Meteor.subscribe('notifications')]
   }
 });
 
-Router.map(function() {
-  //...
-
-  this.route('postsList', {
-    path: '/:postsLimit?',
-    waitOn: function() {
-      var limit = parseInt(this.params.postsLimit) || 5;
-      return Meteor.subscribe('posts', {sort: {submitted: -1}, limit: limit});
-    },
-    data: function() {
-      var limit = parseInt(this.params.postsLimit) || 5;
-      return {
-        posts: Posts.find({}, {sort: {submitted: -1}, limit: limit})
-      };
-    }
-  });
+Router.route('/posts/:_id', {
+  name: 'postPage',
+  waitOn: function() {
+    return Meteor.subscribe('comments', this.params._id);
+  },
+  data: function() { return Posts.findOne(this.params._id); }
 });
+
+Router.route('/posts/:_id/edit', {
+  name: 'postEdit',
+  data: function() { return Posts.findOne(this.params._id); }
+});
+
+Router.route('/submit', {name: 'postSubmit'});
+
+Router.route('/:postsLimit?', {
+  name: 'postsList',
+  waitOn: function() {
+    var limit = parseInt(this.params.postsLimit) || 5;
+    return Meteor.subscribe('posts', {sort: {submitted: -1}, limit: limit});
+  },
+  data: function() {
+    var limit = parseInt(this.params.postsLimit) || 5;
+    return {
+      posts: Posts.find({}, {sort: {submitted: -1}, limit: limit})
+    };
+  }
+});
+
+var requireLogin = function() {
+  if (! Meteor.user()) {
+    if (Meteor.loggingIn()) {
+      this.render(this.loadingTemplate);
+    } else {
+      this.render('accessDenied');
+    }
+  } else {
+    this.next();
+  }
+}
+
+Router.onBeforeAction('dataNotFound', {only: 'postPage'});
+Router.onBeforeAction(requireLogin, {only: 'postSubmit'});
 ~~~
 <%= caption "lib/router.js" %>
-<%= highlight "5, 11~21" %>
+<%= highlight "6,25~37" %>
 
 <%= commit "12-2", "Augmented the postsList route to take a limit." %>
 
-　（ our brand？）に新しいページネーションシステムを与えてみましょう。
-　ホームページで URL のパラメータを変えることで
-　好きなように投稿数を表示することができます。
-　例として、http://localhost:3000/3 にアクセスしてみましょう。
-　このように見えているはずです：
-　
+私たちのブランドの新しいページネーションシステムを試してみましょう。
+今、単純にURLパラメータを変更することで、
+ホームページ上の記事を任意の数を表示する機能を持っています。
+たとえば、`http://localhost:3000/3`にアクセスしてみてください。
+あなたは今、このようなものが表示されるはずです。:
+
 <%= screenshot "12-2", "Controlling the number of posts on the homepage. " %>
 
 <% note do %>
 
-### Why Not Pages?
+### なんでページじゃない?
 
-　なぜ私たちはGoogleの検索結果ページのように
-　10個の投稿ごとに　次のページを表示するのではなく、
-　 “infinite pagination”アプローチを使っているのでしょうか。
+なぜ私たちはGoogleの検索結果ページのように
+10個の投稿ごとに　次のページを表示するのではなく、
+“無限ページネーション”アプローチを使っているのでしょうか？。
+それは、Meteorによるリアルタイムパラダイムだからです。
 
-　　Googleの検索結果ページネーションパターンを使って、Posts コレクションを（paginating？＝ページを作成する？）ことを想像しましょう。
-　そして、10番目から20番目の投稿を表示する2ページ目にいるとします。
-　もし他のユーザーが　（ any of the previous 10 posts？＝1ページ目の10個の投稿のどれかを）削除したとしたら、どうなるのでしょうか？
+Googleの検索結果ページネーションパターンを使って、`Posts`コレクションをページングすることを想像しましょう。
+そして、10番目から20番目の投稿を表示する2ページ目にいるとします。
+もし他のユーザーが1ページ目の10個の投稿のどれかを削除したとしたら、どうなるのでしょうか？
 　
-　このアプリはリアルタイムなので、データセットが変化します。
-　（Post 10 ？）は今、（ post 9？）になり、（drop out of our view？）します。
-　（post 11？）が（in range？＝範囲内？）となります。
-　最終的に、　ユーザーは
-　（no apparent reason？＝目に見えない理由で？）
-　　急に　投稿の変化を見ることになります。
+このアプリはリアルタイムなので、データセットが変化します。
+10番目の投稿は今、９番目になり、画面から消え去ります。
+11番目の投稿が表示対象となります。
+最終的に、ユーザーは目に見えない理由で急に投稿の変化を見ることになります！
 
-　たとえ私たちが　このUX の（quirk？＝特異な行動）を我慢したとしても、
-　従来のページネーションは　技術的な理由で　実行することが難しいです。
+たとえ私たちが　このUXの特異な行動を我慢したとしても、
+従来のページネーションは技術的な理由で実行することが難しいです。
 
-　先ほどの例に戻りましょう。
-　私たちは　10 から 20 の投稿を Posts コレクションから publish しています。　
-　しかし、クライアントでのこうした投稿を、あなたはどのようにして見つけるのでしょうか？（？？？）
-　クライアントサイドのデータセット（in？＝の中に？）全体で10個の投稿しかないので、あなたは10から20の投稿を取得することはできません。
+先ほどの例に戻りましょう。
+私たちは10から20の投稿を`Posts`コレクションからパブリッシュしています。
+しかし、クライアントでのこうした投稿を、あなたはどのようにして見つけるのでしょうか？
+クライアントサイドのデータセットの中に全体で10個の投稿しかないので、
+あなたは10から20の投稿を取得することはできません。
 
-　１つの解決策はサーバーで10個の投稿をパブリッシュすることで、
-　そのときにパブリッシュされたすべての投稿を取り出すためにPosts.find() クライアントサイドを行います。（？？？）
+１つの解決策はサーバーで10個の投稿をパブリッシュすることで、
+そのときにパブリッシュされた*すべて*の投稿を取り出すためにクライアントサイドで`Posts.find()`を行います。
 
-　もしあなたが　１つだけの subscription を（have？＝する？）としたら、
-　これはうまくいきます。　
-　しかし、（as we'll do soon？）、もし　１つの投稿サブスクリプションをより多く（have？）するとしたら、どうなるのでしょうか？
+もしあなたが１つだけのサブスクリプションをもつとしたら、
+これはうまくいきます。　
+すぐにできます。しかし、もし1つ以上の投稿サブスクリプションを持つするとしたら、どうなるのでしょうか？
 
-　仮に　１つの subscription が posts 10から 20 に （ asks for？）
-　（and another one for posts 30 to 40. ？）
-　　今は　どの（ones？＝投稿？）がどの subscriptionに属しているか識別せずに
-　　全体で20個の投稿がクライアントサイドで読み込まれました。
-　
 
-　以上のような理由から、Meteorと連携している時に従来のページネーションはあまり意味をなさないのです。
+それではひとつ目のサブスクリプションが10〜20番目のポストを要求し、
+別の一つが30〜40番目の投稿を要求したとしましょう。
+合計でクライアント側のロードされた20個の記事を持っていますが、どのサブスクリプションから得たものか
+知る方法はありません。
+
+以上のような理由から、Meteorと連携している時に従来のページネーションはあまり意味をなさないのです。
 
 <% end %>
 
-### Creating a Route Controller
+### ルートコントローラーの作成
 
 
-　 var limit = parseInt(this.params.postsLimit) || 5;（ line？）を2度繰り返していることにお気づきかもしれません。
-　さらに、数字の “5” を ハードコーディングすることは　理想的ではありません。
-　これはそれほど深刻なことではありませんが、
-　できればDRY (Don't Repeat Yourself) 原則に従うのがよいので、
-　どのようにリファクタリングするのか少し見ていきましょう。
+`var limit = parseInt(this.params.postsLimit) || 5;`の行を2度繰り返していることにお気づきかもしれません。
+さらに、数字の “5” を ハードコーディングすることは　理想的ではありません。
+これはそれほど深刻なことではありませんが、
+できればDRY (Don't Repeat Yourself) 原則に従うのがよいので、
+どのようにリファクタリングするのか少し見ていきましょう。
 
-　ここで Iron Router の新しい機能、ルートコントローラを紹介します。
-　ルートコントローラはルーティング機能をどんなルートでも引き継いで、再利用可能で素晴らしいパッケージにまとめるためのシンプルな方法です。
-　ここでは１つのルートにルートコントローラを使いますが、
-　次の章ではこの機能がいかに役立つのか見ていきます。
+ここで Iron Router の新しい機能、*ルートコントローラ*を紹介します。
+ルートコントローラはルーティング機能をどんなルートでも引き継いで、
+再利用可能で素晴らしいパッケージにまとめるためのシンプルな方法です。
+ここでは１つのルートにルートコントローラを使いますが、
+次の章ではこの機能がいかに役立つのか見ていきます。
 
 ~~~js
+//...
+
 PostsListController = RouteController.extend({
   template: 'postsList',
   increment: 5,
-  limit: function() {
+  postsLimit: function() {
     return parseInt(this.params.postsLimit) || this.increment;
   },
   findOptions: function() {
-    return {sort: {submitted: -1}, limit: this.limit()};
+    return {sort: {submitted: -1}, limit: this.postsLimit()};
   },
   waitOn: function() {
     return Meteor.subscribe('posts', this.findOptions());
@@ -358,62 +389,70 @@ PostsListController = RouteController.extend({
   }
 });
 
-Router.map(function() {
-  //...
+//...
 
-  this.route('postsList', {
-    path: '/:postsLimit?',
-    controller: PostsListController
-  });
+Router.route('/:postsLimit?', {
+  name: 'postsList'
 });
+
+//...
 ~~~
 <%= caption "lib/router.js" %>
+<%= highlight "3~18, 25" %>
 
-　一つ一つ見ていきましょう。
-　最初に、RouteController を拡張してコントローラを作ります。
-　それから以前行ったように、template プロパティをセットして、
-　その次に新たに increment プロパティをセットします。
+一つ一つ見ていきましょう。最初に、`RouteController`を拡張してコントローラを作ります。
+それから以前行ったように、`template`プロパティをセットして、
+その次に新たに`increment`プロパティをセットします。
 
-　新たに現在の上限を返す limit 関数と
-　（ options ？）オブジェクトを返す findOptions 関数を定義します。
-　これは余分なステップのように見えるかもしれませんが、後々これを利用します。
+新たに現在の上限を返す`limit`関数と
+オプションオブジェクトを返す`findOptions`関数を定義します。
+これは余分なステップのように見えるかもしれませんが、後々これを利用します。
 
-　次に以前と同じように waitOn関数 と data 関数を定義します。
-　ただし、（ they？）が新しく利用している findOptions 関数は除きます。
+次に以前と同じように`waitOn`関数と`data`関数を定義します。
+ただし、新しく利用している`findOptions`関数は除きます。
 
-　最後にすることは、postsList ルートに新しい区分であるコントローラをルーティングするように規定します。（？？？）
+コントローラは`PostsListController`と呼ばれ、ルートが`postsList`と命名されているので、
+Iron Routerは自動的にコントローラを使用します。
+ですので（コントローラは、ここでそれらを処理しているため）
+ルート定義から`waitOn`と`data`を削除する必要があります。
+私たちは別の名前でコントローラを使用するために必要な場合、
+`controller`オプションはを使用できます。（次の章でその一例が表示されます）
 
 <%= commit "12-3", "Refactored postsLists route into a RouteController." %>
 
-### Adding A Load More Link
+### "More Link"のロードを追加する
 
-　ページネーションは動作しているので、コードは良さそうに見えます。
-　１つだけ問題があります：
-　ページネーションを実際に使うには、URL を手動で変えるしかありません。
-　これではユーザーエクスペリエンスに全く役立ちません。
-　そのため、この修正に取り掛かりましょう。
+ページネーションは動作しているので、コードは良さそうに見えます。
+１つだけ問題があります：
+ページネーションを実際に使うには、URL を手動で変えるしかありません。
+これではユーザーエクスペリエンスに全く役立ちません。
+そのため、この修正に取り掛かりましょう。
 
-　私たちがやりたいことはシンプルです。
-　投稿リストの下に “load more” ボタンを追加して　
-　クリックされるごとに、
-　現在表示されている投稿の数値を５増加させます。
-　　つまり、私が現在 http://localhost:3000/5 にいるとしたら、
-　　“load more”ボタンを押すと、私は http://localhost:3000/10 に移動します。
-　　ここまで読み進めた方だったら、このちょっとした算数ができるはずです！
+私たちがやりたいことはシンプルです。
+投稿リストの下に “load more” ボタンを追加して　
+クリックされるごとに、
+現在表示されている投稿の数値を５増加させます。
+つまり、私が現在`http://localhost:3000/5`にいるとしたら、
+“load more”ボタンを押すと、私は`http://localhost:3000/10`に移動します。
+ここまで読み進めた方だったら、このちょっとした算数ができるはずです！
 
-　すでに述べたように、ルートにページネーションロジックを追加します。
- 　無名のカーソルを使うのではく、はっきりとデータコンテキストを（named？）した時（Remember when？）？
-（Well）、data 関数だけがカーソルを渡すことができる（says？）するルールはないので、“load more” ボタンのURLを作るための同じ技術を使います。（？？？）
-　
+すでに述べたように、ルートにページネーションロジックを追加します。
+私たちは、明示的に匿名カーソルを使用するのではなく、
+命名したデータコンテキストを使ったことを覚えていますか？
+まあ、そこに`data`関数はカーソルのみを渡すことができないと言うルールはありませんので、
+“load more”ボタンのURLを生成するために、同じ方法を使用します。
+
 ~~~js
+//...
+
 PostsListController = RouteController.extend({
   template: 'postsList',
   increment: 5,
-  limit: function() {
+  postsLimit: function() {
     return parseInt(this.params.postsLimit) || this.increment;
   },
   findOptions: function() {
-    return {sort: {submitted: -1}, limit: this.limit()};
+    return {sort: {submitted: -1}, limit: this.postsLimit()};
   },
   waitOn: function() {
     return Meteor.subscribe('posts', this.findOptions());
@@ -422,57 +461,56 @@ PostsListController = RouteController.extend({
     return Posts.find({}, this.findOptions());
   },
   data: function() {
-    var hasMore = this.posts().fetch().length === this.limit();
-    var nextPath = this.route.path({postsLimit: this.limit() + this.increment});
+    var hasMore = this.posts().count() === this.postsLimit();
+    var nextPath = this.route.path({postsLimit: this.postsLimit() + this.increment});
     return {
       posts: this.posts(),
       nextPath: hasMore ? nextPath : null
     };
   }
 });
+
+//...
 ~~~
 <%= caption "lib/router.js" %>
-<%= highlight "16~23" %>
+<%= highlight "15~25" %>
 
-　このルーターマジックについて、さらに深く見ていきましょう。
-　 私たちが現在取り組んでいる PostsListController コントローラーから引き継がれたpostsList ルートがpostsLimit 引数をとることを思い出しましょう。
+このルーターマジックについて、さらに深く見ていきましょう。
+私たちが現在取り組んでいる`PostsListController`コントローラーから引き継がれた
+`postsList`ルートが`postsLimit`引数をとることを思い出しましょう。
 
-　{postsLimit: this.limit() + this.increment} to this.route.path()を入力した時、
-　私たちはデータコンテキストとしての JavaScript オブジェクトを使って、postsList ルートに（ its own ？）パスを作るように命令しています。
+`{postsLimit: this.limit() + this.increment}`を`this.route.path()`に入力した時、
+私たちはデータコンテキストとしてJavaScript オブジェクトを使って、
+`postsList`ルートに自身のパスを作るように命令しています。
 　
- 言い換えると、（our own？）カスタムメイドのデータコンテキスト
-よって暗黙的な this を取り替えることを除いて、　
-　これはまさに {{pathFor 'postsList'}}　ヘルパーを使うことと同じことです。
+ 言い換えると、自身のカスタムメイドのデータコンテキストによって、
+ 暗黙的な`this`を取り替えることを除いて、
+これはまさに`{{pathFor 'postsList'}}`Spacebarsヘルパーを使うことと同じことです。
 　　
 
-　私たちは　パスを取って、テンプレートで（it？＝パスを）データコンテキストに追加していますが、
-　（only if？）表示するべき投稿がたくさんあるとしたら。（？？？）
-　これをするための方法は少し（tricky？）です。
+表示するより多くの記事がある場合に*のみ*、
+そのパスを取って、私たちのテンプレートのデータコンテキストにそれを追加している。
+それを行う方法は少しトリッキーです。
 
-　（We know that this？）。
-　現在のURLがどんな引数も含んでいない場合、
-　limit()　は私たちが表示したい現在の投稿数を返します。
-　それは現在のURLの値か、デフォルトの値(5)です。
-　
+`this.limit()`は、私たちが表示したい現在の投稿数を返します。
+または、現在のURLを基にした値か、URLにパラメータが含まれていなければ、デフォルト値(5)を返します。　
 
-　他方で、this.posts は現在のカーソルを参照するので、
-　this.posts.count()は　実際にカーソルの中の　投稿数を参照します。　
+他方で、`this.posts`は現在のカーソルを参照するので、
+`this.posts.count()`は実際にカーソルの中の投稿数を参照します。
 
-　ここで私たちが言っていることは、もし私たちが n posts を要求して n を戻すと、
-　“load more”ボタンを表示し続けるということです。
-　（hit the limit？）するという意味で、私たちはそのボタンの表示をストップすべきです。
+ここで私たちが言っていることは、もし私たちが`n`posts を要求して`n`を戻すと、
+“load more”ボタンを表示し続けるということです。
+リミットに達すると`n`*より小さい*の値が返るので、私たちはそのボタンの表示をストップすべきです。
 
-　（That being said？）、このシステムは
-　データベース内の（items？）の数がまさに n である時に失敗します。
-　（If that happens？）、クライアントは n 投稿を要求して、 n 投稿を戻してして、
-　“load more"ボタンを表示し続けます。
-　何も（items？）が残っていないと気づきません。
+とはいえ、このシステムはあるケースにて失敗します：
+もし、データベースのアイテム数がは*正確に*`n`出会った場合、何が起こるかというと、
+クライアントが`n`投稿あることを確認し取得すると“load more”ボタンが表示し続けるのです。
 
-　残念なことに、この問題に単純な次善策はないので、
-　今のところ私たちはこの完全でない実装を解決する必要があります。　
+残念なことに、この問題に単純な次善策はないので、
+今のところ私たちはこの完全でない実装を解決する必要があります。　
 
-　もしさらに投稿をロードさせるとしたら、
-　するために残されていることは投稿リストのボタンの下に“load more”リンクを追加して（it ？＝このリンク？）だけをを表示します。
+もしさらに投稿をロードさせるとしたら、
+するために残されていることは投稿リストのボタンの下に“load more”リンクを追加して、このリンクだけをを表示します。
 
 ~~~html
 <template name="postsList">
@@ -487,10 +525,9 @@ PostsListController = RouteController.extend({
   </div>
 </template>
 ~~~
-<%= caption "client/views/posts/posts_list.html" %>
+<%= caption "client/templates/posts/posts_list.html" %>
 <%= highlight "7~10" %>
 
-Here's what your post list should now look like:
 これで投稿リストは現在このようになっているはずです：
 
 
@@ -498,76 +535,103 @@ Here's what your post list should now look like:
 
 <%= commit "12-4", "Added nextPath() to the controller and use it to step through posts." %>
 
-<% note do %>
+### より良いユーザー体験
 
+ページネーションは現在正常に動作していますが、変な癖があります：
+毎回私たちは“load　more”をクリックして、ルータは、新しいデータが入ってくるようにするために、
+我々は待っている間Iron Routerの`waitOn`機能は`loading`テンプレートに私たちを送信し、
+より多くのポストを要求します。
+その結果、私たちは、送信さるたびにページの上部に戻され、
+私たちのブラウジングを再開する度に下にスクロールする必要があるということです。
 
-<% end %>
+だから最初、私たちはすべての後にサブスクリプションを`waitOn`しないように
+Iron Router に指示する必要があります。
+その代わりに、我々は、`subscriptions`フックで私たちのサブスクリプションを定義します。
 
-### A Better Progress Bar
-
-　これまで作ったページネーションは今、正しく動いていますが、
-　（ annoying quirk？）に（suffers from？＝苦しみ？）ます。
-
-　（while still providing some kind of indication  ＝新しいデータを現在読み込んでいることを示す間？）
-　操作をしている間はずっと同じページに留まれば、
-　（It？）はさらにさらに良くなるでしょう。
-　ありがたいことに、これはまさに iron-router-progressパッケージが（is for？）なことです。
-
-　 iOSの Safari や Medium、 YouTube といったサイトと同様に、
-　iron-router-progress は スクリーンの一番上に細いローディングバーを追加します。
-　これを実装するにはアプリにパッケージを追加するのと同じくらい簡単です：
-
-~~~bash
-meteor add mrt:iron-router-progress
-~~~
-<%= caption "bash console" %>
-
-　スマートパッケージの魔法で、
-　新しい（progress indicator＝プログレスバー？）はそのままの状態で完全に正しく動きます！
-　プログレスバーは　各ルートでも有効で、
-　ルートがの要求したデータがロードを終えると、自動的に完了します。　
-
-　１つだけ調整します。
-　iron-router-progress を postSubmit ルートで使えなくしましょう。
-　というのは、（it＝iron-router-progress ？）はサブスクリプションデータを待つ必要がないためです。（結局は、空っぽの（form＝フォーム？）です。）
+また、データコンテキストの一部として`this.postsSub.ready`を参照できる`ready`変数を渡している。
+これで、ポストスクリプションがロードを完了したことを、
+テンプレートに教えてあげます。
 
 ~~~js
-Router.map(function() {
+//...
 
-  //...
-
-  this.route('postSubmit', {
-    path: '/submit',
-    disableProgress: true
-  });
+PostsListController = RouteController.extend({
+  template: 'postsList',
+  increment: 5,
+  postsLimit: function() {
+    return parseInt(this.params.postsLimit) || this.increment;
+  },
+  findOptions: function() {
+    return {sort: {submitted: -1}, limit: this.postsLimit()};
+  },
+  subscriptions: function() {
+    this.postsSub = Meteor.subscribe('posts', this.findOptions());
+  },
+  posts: function() {
+    return Posts.find({}, this.findOptions());
+  },
+  data: function() {
+    var hasMore = this.posts().count() === this.postsLimit();
+    var nextPath = this.route.path({postsLimit: this.postsLimit() + this.increment});
+    return {
+      posts: this.posts(),
+      ready: this.postsSub.ready,
+      nextPath: hasMore ? nextPath : null
+    };
+  }
 });
+
+//...
 ~~~
 <%= caption "lib/router.js" %>
-<%= highlight "7" %>
+<%= highlight "12~14, 23" %>
 
-<%= commit "12-5", "Use the iron-router-progress package to make pagination nicer." %>
+ポストの新しいセットをロードしている間、ポストリストの下部にあるスピナーを表示するために、
+テンプレートにこの`ready`変数をチェックします：
+
+~~~html
+<template name="postsList">
+  <div class="posts">
+    {{#each posts}}
+      {{> postItem}}
+    {{/each}}
+
+    {{#if nextPath}}
+      <a class="load-more" href="{{nextPath}}">Load more</a>
+    {{else}}
+      {{#unless ready}}
+        {{> spinner}}
+      {{/unless}}
+    {{/if}}
+  </div>
+</template>
+~~~
+<%= caption "client/templates/posts/posts_list.html" %>
+<%= highlight "10~12" %>
+
+<%= commit "12-5", "Add a spinner to make pagination nicer." %>
+
 
 ### Accessing Any Post
 
-　私たちは現在、デフォルトで最新の５つの投稿をロードしていますが、
-　投稿の個別ページを見たい人がいたらどうなるでしょうか？
+私たちは現在、デフォルトで最新の５つの投稿をロードしていますが、
+投稿の個別ページを見たい人がいたらどうなるでしょうか？
 
 <%= screenshot "12-4", "An empty template." %>
 
-　これを試すと、空っぽの投稿テンプレートに出くわします。
-　これはこういうことです：
-　postsLis ルートをロードする時に、　
-　私たちはルーターが posts パブリケーションにサブスクライブするように指示を出しています。
-　しかし、私たちは postPage ルートに何をするのか指示を出しませんでした。。
+これを試すと、“not found”エラーに出くわします。
+これはこういうことです：
+`postsList`ルートをロードする時に、
+私たちはルーターが`posts`パブリケーションにサブスクライブするように指示を出しています。
+しかし、私たちは`postPage`ルートに何をするのか指示を出しませんでした。
 
-　しかし、今までで私たちが　行う方法のすべては n の最新の投稿リストにサブスクライブすることです。
-　では、サーバーに１つの特定の投稿を要求するにはどうしたら良いのでしょうか？
-　ここでちょっとした秘密を（let you in？＝教え？）ましょう：
-　あなたは　各コレクションに対して１つ以上のパブリケーションを持つことができます！　
+しかし、今までで私たちが　行う方法のすべては`n`の最新の投稿リストにサブスクライブすることです。
+では、サーバーに１つの特定の投稿を要求するにはどうしたら良いのでしょうか？
+ここでちょっとした秘密を教えましょう：
+あなたは　各コレクションに対して１つ以上のパブリケーションを持つことができます！　
 
-　行方不明の投稿を取り戻すために、
-　新たに独立した singlePost パブリケーションを作ります。
-　これは_idで識別して１つの投稿だけをパブリッシュします。
+行方不明の投稿を取り戻すために、新たに独立した`singlePost`パブリケーションを作ります。
+これは`_id`で識別して１つの投稿だけをパブリッシュします。
 
 ~~~js
 Meteor.publish('posts', function(options) {
@@ -575,52 +639,51 @@ Meteor.publish('posts', function(options) {
 });
 
 Meteor.publish('singlePost', function(id) {
-  return id && Posts.find(id);
+  check(id, String)
+  return Posts.find(id);
 });
+
+//...
 ~~~
 <%= caption "server/publications.js" %>
 <%= highlight "5~7" %>
 
-　さあ、　（right posts？）クライアントサイドにサブスクライブしましょう。
-　私たちはすでに　postPageルートの waitOn関数に　comments パブリケーションをサブスクライブしています。
-　そのため、（there？）でsinglePostにサブスクリプションを簡単に追加できます。
-　postEdit ルートへの subscription を追加することを忘れずに。
-　というのは、postEdit ルートも同じデータが必要だからです。
-　
+さあ、クライアントサイドに正しい投稿をサブスクライブしましょう。
+私たちはすでに`postPage`ルートの`waitOn`関数に`comments`パブリケーションをサブスクライブしています。
+そのため、ここでで`singlePost`にサブスクリプションを簡単に追加できます。
+`postEdit`ルートへのサブスクリプション追加することを忘れずに。
+というのは、`postEdit`ルートも同じデータが必要だからです。
+
 ~~~js
-Router.map(function() {
+//...
 
-  //...
-
-  this.route('postPage', {
-    path: '/posts/:_id',
-    waitOn: function() {
-      return [
-        Meteor.subscribe('singlePost', this.params._id),
-        Meteor.subscribe('comments', this.params._id)
-      ];
-    },
-    data: function() { return Posts.findOne(this.params._id); }
-  });
-
-  this.route('postEdit', {
-    path: '/posts/:_id/edit',
-    waitOn: function() {
-      return Meteor.subscribe('singlePost', this.params._id);
-    },
-    data: function() { return Posts.findOne(this.params._id); }
-  });
-
-  /...
-
+Router.route('/posts/:_id', {
+  name: 'postPage',
+  waitOn: function() {
+    return [
+      Meteor.subscribe('singlePost', this.params._id),
+      Meteor.subscribe('comments', this.params._id)
+    ];
+  },
+  data: function() { return Posts.findOne(this.params._id); }
 });
+
+Router.route('/posts/:_id/edit', {
+  name: 'postEdit',
+  waitOn: function() {
+    return Meteor.subscribe('singlePost', this.params._id);
+  },
+  data: function() { return Posts.findOne(this.params._id); }
+});
+
+//...
 ~~~
 <%= caption "lib/router.js" %>
-<%= highlight "7~12,18~20" %>
+<%= highlight "6~9,16~18" %>
 
 <%= commit "12-6","Use a single post subscription to ensure that we can always see the right post." %>
 
-　ページネーションが完了すると、このアプリはスケーリングの問題に苦しむことはありません。
-　そのため、ユーザーは以前よりも多くのリンクを投稿することでしょう。
-　では、こうしたリンクにどうにかしてランク付けする良い方法はないものでしょうか？
-　次の章のトピックはまさに、Votingです。
+ページネーションが完了すると、このアプリはスケーリングの問題に苦しむことはありません。
+そのため、ユーザーは以前よりも多くのリンクを投稿することでしょう。
+では、こうしたリンクにどうにかしてランク付けする良い方法はないものでしょうか？
+これこそが、次の章の話題です！
