@@ -22,6 +22,7 @@ Check it out live at http://ja.discovermeteor.com/
  * 最終的な見た目を手元の環境で確認したい場合、[Discover Meteor Static](https://github.com/DiscoverMeteor/DiscoverMeteorStatic)を使ってみてください
  * GitHub上でもファイルを編集できます
  * [公開版](http://ja.discovermeteor.com/)に各章の進捗が出ているので、残り作業の目安にしてください
+ * [Dockerを使ったDiscoverMeteor用のmiddleman環境](https://github.com/m0a/middleman4DM)を用意してみました。
 
 ### 他の人と作業が重複しないためにできること
 

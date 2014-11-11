@@ -1,28 +1,44 @@
 ---
-title: Advanced Reactivity
+title: 高度なリアクティビティ
 slug: advanced-reactivity
 date: 0011/01/02
 number: 11.5
+points: 10
 sidebar: true
-contents: Learn about how to create reactive data sources in Meteor.|Create a simple example of a reactive data source.|See how Deps compares to AngularJS.
+photoUrl: http://www.flickr.com/photos/ikewinski/8676146109/
+photoAuthor: Mike Lewinski
+contents: Meteorでリアクティブデータ·ソースを作成する方法について学びます。|リアクティブデータソースの簡単な例を作成します。|トラッカーとAngularJSを比較する方法を参照してください。
 paragraphs: 29
-version: 1.7
+version: 1.7.1
 ---
 
-////
+自分で依存性の追跡コードを記述する必要があることはまれですが、
+依存関係解決の流れが動作する方法を追跡するためにそれを理解することは確かに便利です。
 
-////
+Microscope上の各投稿を「Like」したか、
+現在のユーザーのFacebookの友人の多くを追跡したいと思っていると仮定します。
+すでに適切なAPI呼び出しを行い、Facebookとユーザーを認証し、
+関連データを解析する方法の詳細は動いていて、
+現在、「Like」の数を返すクライアントサイドの非同期関数、
+`getFacebookLikeCount(user, url, callback)`を持っているとします。
 
-////
+このような関数について覚えておくべき重要なことは、
+それが非常に*非リアクティブ*で非リアルタイムであるということです。
 
-////
+これは、FacebookへHTTPリクエストを行い、いくつかのデータを取得します。
+そして、非同期コールバック内でアプリケーションが使用できるようにします。
+しかし、カウントするFacebookで切り替わるときに関数は、
+それ自身によって再実行されませんし、基になるデータがないとUIが変更されません。
+
+これを修正するには、我々は数秒毎に関数を呼び出すために、
+`setInterval`を使用して起動することができます。:
 
 ~~~js
 currentLikeCount = 0;
 Meteor.setInterval(function() {
   var postId;
   if (Meteor.user() && postId = Session.get('currentPostId')) {
-    getFacebookLikeCount(Meteor.user(), Posts.find(postId), 
+    getFacebookLikeCount(Meteor.user(), Posts.find(postId).url,
       function(err, count) {
         if (!err)
           currentLikeCount = count;
@@ -31,7 +47,9 @@ Meteor.setInterval(function() {
 }, 5 * 1000);
 ~~~
 
-////
+いつでも、 変数`currentLikeCount`をチェックし、
+5秒の余裕をもって正しい番号を取得することを期待することができます。
+私たちは、今、ヘルパーでこの変数を使用することができます：
 
 ~~~js
 Template.postItem.likeCount = function() {
@@ -39,23 +57,39 @@ Template.postItem.likeCount = function() {
 }
 ~~~
 
-////
+しかし、何もまだ`currentLikeCount`が変化した時、再描画するようにテンプレートに何も伝えていません。
+変数は、それ自体によって変化することになった擬似リアルタイムですが、
+それはまだかなりMeteorエコシステムの他の部分と正常に通信できないので、
+*リアクティブ*ではありません。
 
-### Tracking Reactivity: Computations
+### リアクティビティをトラッキング：計算
 
-////
+Meteorのリアクティビティは、計算のセットを追跡するデータ構造体の*依存*によって仲介されます。
 
-////
+Meteor's reactivity is mediated by *dependencies*, data structures that track a set of computations.
 
-////
+以前のリアクティビティのサイドバーで見たように、
+計算はリアクティブデータを使用するコードの箇所があります。
+この例では、そこに暗黙のうちに`postItem`テンプレート用に作成さる計算があり、
+そのテンプレートのマネージャー上のすべてのヘルパーは、同様にそれ自身の計算を持っています。
 
-### Turning a Variable Into a Reactive Function
+As we saw in the earlier reactivity sidebar, a computation is a section of code that uses reactive data. In our case, there's a computation that's been implicitly created for the `postItem` template, and every helper on that template's manager has it's own computation as well.
 
-////
+リアクティブデータについて「気にする」というコードの一部としての計算と考えることができます。
+データの変更は、それが（`invalidate()`を介して）通知され、
+この計算になり、何かが行われる必要があるか否かを決定する計算になります。
+
+You can think of the computation as the section of code that "cares" about the reactive data. When the data changes, it will be this computation that is informed (via `invalidate()`), and it's the computation that decides whether something needs to be done.
+
+### 変数をリアクティブ関数に変える
+
+`currentLikeCount`変数をリアクティブデータソースに変え、
+依存関係を使用し計算のすべてを追跡する必要があります。
+それは変数から(値を返却する)関数へ変えていくことが必要です。:
 
 ~~~js
 var _currentLikeCount = 0;
-var _currentLikeCountListeners = new Deps.Dependency();
+var _currentLikeCountListeners = new Tracker.Dependency();
 
 currentLikeCount = function() {
   _currentLikeCountListeners.depend();
@@ -65,7 +99,7 @@ currentLikeCount = function() {
 Meteor.setInterval(function() {
   var postId;
   if (Meteor.user() && postId = Session.get('currentPostId')) {
-    getFacebookLikeCount(Meteor.user(), Posts.find(postId), 
+    getFacebookLikeCount(Meteor.user(), Posts.find(postId),
       function(err, count) {
         if (!err && count !== _currentLikeCount) {
           _currentLikeCount = count;
@@ -77,37 +111,75 @@ Meteor.setInterval(function() {
 ~~~
 <%= highlight "1~7,14~17" %>
 
-////
+`currentLikeCount()`中で使用されているすべての計算を追跡するため、
+`_currentLikeCountListeners`依存性を設定したことです。 `_currentLikeCount`の値が変更された時、
+すべての追跡計算を取り返す、依存関係上の`change()`関数を呼び出します。
 
-////
+What we've done is setup a `_currentLikeCountListeners` dependency, which tracks all the computations within which `currentLikeCount()` has been used. When the value of `_currentLikeCount` changes, we call the `changed()` function on that dependency, which invalidates all the tracked computations.
 
-### Template Computation and Controlling Redraws
+これらの計算はその後、先に行くとケースバイケースで変化に対応することができます。
 
-////
+These computations can then go ahead and deal with the change on a case-by-case basis.
 
-////
+それは、単純なリアクティブデータソースの定型文のように思えた場合、あなたは正しいです。
+Meteorは簡単にリアクティブソースにするためのツールがいくつか用意されています。
+（同じように直接計算を使用する必要はありません、あなたは通常は自動実行を使用します）
+`currentLikeCount()`関数が何をしているかを正確に把握するための、
+`reactive-var`というプラットフォームパッケージがあります。それを追加します:
 
-////
+~~~bash
+meteor add reactive-var
+~~~
 
-////
+コードを単純化するためにそれを使用することができます：
 
-////
+~~~js
+var currentLikeCount = new ReactiveVar();
 
-////
+Meteor.setInterval(function() {
+  var postId;
+  if (Meteor.user() && postId = Session.get('currentPostId')) {
+    getFacebookLikeCount(Meteor.user(), Posts.find(postId),
+      function(err, count) {
+        if (!err) {
+          currentLikeCount.set(count);
+        }
+      });
+  }
+}, 5 * 1000);
+~~~
+<%= highlight "1,9" %>
 
-### Comparing Deps to Angular
+今、ヘルパーで`currentLikeCount.get()`を呼ぶことで、それは以前のように動作します。
+とても便利な（ほぼ`Session`と同等の）リアクティブのキーと値のストアを、
+提供する別のプラットフォームパッケージ`reactive-dict`もあります。
 
-////
+### TrackerとAngularの比較
 
-////
+[Angular](http://angularjs.org/)はGoogleの善意の人々によって開発された
+クライアントサイドのリアクティブレンダリングライブラリです。
+アプローチはかなり異なっているので、
+Angularの依存性追跡とMeteorのそれを比較してみます。
 
-////
+私たちは、Meteorのモデルは、コードと呼ばれる計算のブロックを使用していることを見てきました。これらの計算は、適切なときにそれらを無効にするの世話をする特別な「リアクティブ」のデータソース（関数）によって追跡されています。
+`invalidate()`を呼び出す必要があるときにデータソースは、_明示的_にその依存関係のすべてに通知します。
+データが変更されたときに、一般的であるが、データソースは、
+潜在的に他の理由で無効化をトリガするかを決定できることに注意ください。
 
-////
+加えて、計算は通常は再実行が無効化されたときに、
+あなたが好きなように振る舞うためにそれらを設定することができます。
+すべてこれは私たちに、リアクティビティの制御を高レベルを提供します。
 
-////
+Angularでは、リアクティビティが`scope`オブジェクトによって媒介されます。
+スコープは特別なメソッドと、プレーンJavaScriptオブジェクトの組み合わせと考えることができます。
 
-////
+スコープの値にリアクティビティ依存したい場合、
+中へ(つまり、あなたは、範囲のどの部分に関心があるか)興味を持っている部分に式を提供して、
+`scope.$watch`を呼びます。つまり、値が変わって欲しい部分を明示的にします。
+
+When you want to reactively depend on a value in a scope, you call `scope.$watch`, providing the expression that you are interested in (i.e. which parts of the scope you care about) and a listener function that will run every time that expression changes. So you explicitly state exactly what you want to do every time the value of the expression changes.
+
+Facebookの例に戻り、以下のように書きます:
 
 ~~~js
 $rootScope.$watch('currentLikeCount', function(likeCount) {
@@ -115,17 +187,25 @@ $rootScope.$watch('currentLikeCount', function(likeCount) {
 });
 ~~~
 
-////
+もちろん、めったにMeteorにて計算を設定しないと同じように、
+Angularでは`$watch`は滅多に呼ばれず、`ng-model`ディレクティブと`{{expressions}}`による
+自動の監視設定により、変更時の再レンダリングを管理します。
 
-////
+このようなリアクティブな値が変わった場合、`scope.$apply()`が呼ばれなければなりません。
+これは、スコープのすべての監視を再評価し、値が*変わった*式の監視のリスナー関数だけを呼び出します。
 
-////
+したがい、それはリスナーが再評価されるべきかを正確に伝えるよう制御を与えるのではなく、
+スコープのレベルで作用する点という除き、`scope.$apply()`は、`dependency.changed()`に似ています。
+つまり、制御のこのわずかな不足がAngularにそれが正確にリスナーが再評価される必要があるかを、
+決定する方法で、非常にスマートかつ効率的にする機能を提供します。
 
-////
+So `scope.$apply()` is similar to `dependency.changed()`, except that it acts at the level of the scope, rather than giving you the control to say precisely which listeners should be re-evaluated. That being said, this slight lack of control gives Angular the ability to be very smart and efficient in the way it determines precisely which listeners need to be re-evaluated.
+
+Angularでは、`getFacebookLikeCount()`の関数コードは以下のようにかけると思います。:
 
 ~~~js
 Meteor.setInterval(function() {
-  getFacebookLikeCount(Meteor.user(), Posts.find(postId), 
+  getFacebookLikeCount(Meteor.user(), Posts.find(postId),
     function(err, count) {
       if (!err) {
         $rootScope.currentLikeCount = count;
@@ -136,4 +216,7 @@ Meteor.setInterval(function() {
 ~~~
 <%= highlight "5~6" %>
 
-////
+確かに、Meteorは私たちのために力仕事のほとんどの世話をし、
+我々のたくさんの仕事を外してくれるリアクテイビティから利益をもたらしてくれました。
+望むならば、これらのパターンを学ぶことは、さらに物事をプッシュする必要がある場合でも、
+助けになってくれます。
