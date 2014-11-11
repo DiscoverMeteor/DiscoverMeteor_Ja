@@ -1,24 +1,29 @@
 ---
-title: Pagination
+title: ページネーション
 slug: pagination
 date: 0012/01/01
 number: 12
-contents: Learn more about Meteor's subscriptions, and how we can use them to control data.|Implement infinite-style pagination.|Use the `iron-router-progress` package to implement a nifty iOS-style progress bar.|Create a special subscription to deal with direct links to posts page.
+points: 10
+photoUrl: http://www.flickr.com/photos/ikewinski/8625379401/
+photoAuthor: Mike Lewinski
+contents: Meteorのサブスクリプションを使ったデータの操作方法を学びます。|無限に続くスタイルのページネーションを実装します|`iron-router-progress`パッケージでiOSスタイルのプログレスバーを作ります。|投稿ページへの直接リンクを扱う特別なサブスクリプションを作成します。
 paragraphs: 67
 version: 1.7
 ---
 
-　（Things are looking great with Microscope？）、
-　世界に公開したら、私たちは　（hit reception？）を　見込むことができます。
+見た目がすごいMicroscopeであれば、それが世界にリリースされたとき、大ヒットを期待することができます。
 
-　そのため、私たちは（as it takes off？）時に、サイトの一部になる新しい投稿の数のパフォーマンス（ implication？）について少し考えるべきかもしれません。　　
+ですので、実際にリリースする前に、
+新しい投稿の数によるパフォーマンスの意義について少し考える必要があります！
 
-　これまでに、どのようにクライアントサイドのコレクションが　サーバーのデータの一部を含めるのか説明しました。
-　また、（notification と comments？）コレクションでも同じことを行いました。
+これまでに、どのようにクライアントサイドのコレクションが　サーバーのデータの一部を含めるのか説明しました。
+また、notificationとcommentsコレクションでも同じことを行いました。
 
-　しかし今のところ、まだ私たちは接続しているユーザーに対して、1回の投稿ですべてを  publish しています。
+しかし今のところ、まだ私たちは接続しているユーザーに対して、1回のアクセスでパブリッシュしています。
+リンクが数千掲載されてた場合、最終的には、これは問題になります。
+これを解決するために、我々は我々の記事をページ分割する必要があります。
 
-### Adding More Posts
+### もっとたくさんの投稿を追加します
 
 　最初に、　ページネーションが実際に（make sense？＝意味をなす？）ように、
 　（ fixture？）データに十分な投稿を詰め込みましょう。
