@@ -236,9 +236,8 @@ Meteor.methods({
 
 この最後のステップは、興味深い特別なMongoの演算子を使用しました。
 他にも学ぶべき演算子はありますが、これら二つは非常に有用です。
-`$addToSet`は、それがすでに存在していないように配列プロパティに項目を追加し、
+`$addToSet`は、それがすでに存在していない場合に限り配列プロパティに項目を追加し、
 `$inc`は、単純に整数フィールドをインクリメントします。
-`$addToSet` adds an item to an array property as long as it doesn't already exist,
 
 ### ユーザーインターフェースの微調整
 
@@ -395,13 +394,14 @@ Meteor.methods({
 
 
 
-私たちが言っていることは「これですべての投稿を`id`で見つけ、このユーザはまだに投票していなければこの方法でそれらを更新する」です。
+これは「すべての投稿を`id`で見つけ、このユーザはまだに投票していなければこの方法でそれらを更新する」
+という処理です。
 ユーザーは*まだ*投票していない場合、当然ですが`id`を持つ投稿を見つけるでしょう。
 一方ユーザーが投票した場合、問合せは書類と一致しなくなり、その結果、何も起こりません。
 
 <% note do %>
 
-### レイテンシーの埋め合わせ
+### Latency Compensation
 
 例えば、あなたがチートや投票のその数を微調整することにより、リストの一番上にあなたの記事のいずれかを送信しようとしたとしましょう：
 
@@ -412,23 +412,22 @@ Meteor.methods({
 
 （ここで、 `postId`はあなたの記事の1つのidです）
 
-システムを賭博でこの厚かましい試みは私たちの`deny()`コールバックによってキャッチされるであろう
-（ `collections/posts.js`です。覚えてる？）、すぐに打ち消されます。
+システムに対する遊びとしての図々しい試みは私たちの`deny()`コールバックによってキャッチされます。
+（ `collections/posts.js`です。覚えてます？）、そして、すぐに打ち消されます。
 
-しかし、慎重に見ればあなたはアクションでレイテンシの埋め合わせを参照することができるかもしれません。
-それは、迅速なかもしれないが、ポストを簡単に元の位置に戻る前に、リストの一番上にジャンプします。
-
-But if you look carefully, you might be able to see latency compensation in action. It may be quick, but the post will briefly jump to the top of the list before shooting back into position.
+しかし、慎重に見ればあなたはこの行為でlatency compensationを目撃することができるかもしれません。
+それは、それは一瞬で進みますが、投稿は元の位置に戻る前に、一時的にリストの一番上にジャンプします。
 
 何が起こったのか？ローカルの`Posts`コレクションでは、`update`は何事もなく適用されます。
-これは瞬時に起こるのですが、ポストがリストの一番上にジャンプします。
+これは瞬時に起こるのですが、投稿がリストの一番上にジャンプします。
 一方、サーバー上で、`update`が拒否されていました。
 なので、ちょっと後（自分のマシン上でMeteorを実行している場合は、ミリ秒単位です。）に、
 サーバは、エラーが返され、ローカルコレクションに元に戻すように指示しました。
 
-最終結果：サーバが応答するのを待っている間、
-ユーザーインターフェースは助けますが、ローカルコレクションを信頼することはできません。とすぐに、
-サーバが戻ってくると変更を拒否したように、ユーザインタフェースは、それを反映するように適応させれます。
+最終結果：サーバが応答するのを待っている間、ユーザーインターフェースの助けにはなりますが、
+ローカルコレクションを信頼することはできません。
+とすぐに、サーバが戻ってくると変更を拒否したように、
+ユーザインタフェースは、それを反映するように適応させれます。
 
 <% end %>
 
@@ -514,10 +513,8 @@ Router.route('/best/:postsLimit?', {name: 'bestPosts'});
 <%= highlight "10,23,27~55" %>
 
 
-注意点として、一つ以上の異なるルートを`PostsListController`、`NewPostsController`、 `BestPostsController`内の`nextPath`ロジックから、取得している
-
-Note that now that we have more than one route, we're taking the `nextPath` logic out of `PostsListController` and into `NewPostsController` and `BestPostsController`, since the path will be different in either case.
-
+注意点として、一つ以上のルートを持ち、パスはどちらの場合では異なるであろうことから、`nextPath`ロジックを`PostsListController`から出して、
+`NewPostsController`、 `BestPostsController`に入れています。
 
 加えて、`votes`によってソートする時、タイムスタンプや `_id`によって後続のソートを指定し、
 順序が完全に指定されていることを確認しました。
@@ -578,7 +575,7 @@ Additionally, when we sort by `votes`, we have a subsequent sorts by submitted t
 <%= highlight "11, 15~20" %>
 
 
-最後に、イベントハンドラを削除して投稿を更新する必要があります：
+最後に、投稿削除のイベントハンドラを更新する必要があります：
 
 ~~~html
   'click .delete': function(e) {
@@ -602,20 +599,17 @@ Additionally, when we sort by `votes`, we have a subsequent sorts by submitted t
 
 ### A Better Header
 
-　これで２つのリストページがあるので、
-　どちらのリストを現在見ているのか知ることは難しいかもしれません。（？？？）
-　そのため、もっとわかりやすくするために、ヘッダーを　（evisit？）しましょう。
-　私たちは　header.jsマネージャを作って、カレントパスで使うヘッダーを作って、
-　１つ以上の（ named？）ルーターに　（active class on our navigation items？）をセットします。
+これで２つのリストページがあるので、
+どちらのリストを現在見ているのか知ることは難しいかもしれません。
+そのため、もっとわかりやすくするために、ヘッダーを再検討してみましょう。
+ナビゲーション項目上で`.active`クラスを設定するために
+現在のパスと1つ以上の名前付きルートを使用して`header.js`マネージャとヘルパーを作成します:
 
-　なぜ私たちが複数の（named ？）ルートをサポートしたいかというと、
-　それぞれ / と /new URLに対応するhome と newPosts ルートが同じテンプレートを（ bring up？）するためです。
-　つまり、（in both cases）で、activeRouteClass は<li> タグを（active）にするほど（smart enough ？）だということです。
-
-Now that we have two post list pages, it can be hard to know just which list you're currently viewing. So let's revisit our header to make it more obvious. We'll create a `header.js` manager and create a helper that uses the current path and one or more named routes to set an active class on our navigation items:
-
-The reason why we want to support multiple named routes is that both our `home` and `newPosts` routes (which correspond to the `/` and `/new` URLs respectively) bring up the same template. Meaning that our `activeRouteClass` should be smart enough to make the `<li>` tag active in both cases.
-
+複数の名前付きルートをサポートしたい理由は、
+私たちの`home`と`newPosts`ルートの両方（URLはそれぞれ`/`と `/ new`）
+に同じテンプレートを使いたいからです。
+両方のケースで`<LI>`タグをアクティブにするので、
+`activeRouteClass`は十分にスマートでなければならないことを意味します。
 
 ~~~html
 <template name="header">
@@ -678,51 +672,32 @@ Template.header.helpers({
 
 <% note do %>
 
-### Helper Arguments
+### ヘルパーの引数
 
-We haven't used that specific pattern up to now, but just like any other Spacebars tags, template helper tags can take arguments.
+私たちは、今までこのパターンを使用していませんでした。
+他のSpacebarsのタグのように、テンプレートヘルパータグは引数を取ることができます。
 
-And while you can of course pass specific named arguments to your function, you can also pass an unspecified number of anonymous parameters and retrieve them by calling the `arguments` object inside a function.
+あなたはもちろん、あなたの関数に特定の名前付き引数を渡すことができつつ、
+不特定多数の匿名のパラメータを渡し、関数内で`arguments`オブジェクトを呼び出すことで、
+それらを取得することができます。
 
-In this last case, you will probably want to convert the `arguments` object to a regular JavaScript array and then call `pop()` on it to get rid of the hash added at the end by Spacebars.
-
-　今のところ、私たちは　（that specific？）パターンを使いませんでしたが、
-　他の Spacebars タグと同様に、テンプレートヘルパーは引数をとることができます。
-
-　もちろん、　関数に　（specific named？）引数を渡すことができる一方で、
-　関数の中で引数オブジェクトを呼び出すことで、（an unspecified number of anonymous？）の引数を
-　渡すこともできます。
-
-
-　（In this last case, ？）
-　おそらく、あなたはSpacebarsで
-　この引数オブジェクトを通常のJavaScriptの配列に変換して、
-　（added at the end？）されたハッシュを削除するために、(it？)でpop()を呼び出したいと
-　思うことでしょう。
-
+この最後のケースでは、
+あなたはおそらく正規のJavaScript配列に`arguments`オブジェクトを変換したいと思うでしょうし、
+それでSpacebarsによって最後に追加されたハッシュを取り除くために`pop()`を呼び出しました。
 
 <% end %>
 
-For each navigation item, the `activeRouteClass` helper takes a list of route names, and then uses Underscore's `any()` helper to see if any of the routes pass the test (i.e. their corresponding URL being equal to the current path).
+各ナビゲーションアイテムで、`activeRouteClass`ヘルパーはルート名のリストを取り、
+その後の経路のいずれかがテスト(対応するURLが現在のパスに等しいかどうか)
+に合格するかどうかを確認するために、
+Underscoreの`any()`ヘルパーを使用しています。
 
-If any of the routes do match up with the current path, `any()` will return `true`. Finally, we're taking advantage of the `boolean && string` JavaScript pattern where `false && myString` returns `false`, but `true && myString` returns `myString`.
-
-　（For each navigation item, ？）、
-　activeRouteClass ヘルパーは　ルートの名前のリストを取って、
-　（ any of ？）ルートが（the test）を渡すかどうか確かめるために、
-　 Underscore　の　any() ヘルパーを使います。
-
-
-　ルートの（ any of ？）が　カレントパスとマッチしたら、any()は true を返します。
-　最後に、私たちは　（of the boolean && string JavaScript pattern where false && myString returns false）を利用していますが、
-　（true && myString？）は myString を返します。
+もし現在のパスにルートがマッチするなら、`any()`は`true`を返します。
+最後に、`boolean && string`というJavaScriptパターンの利点についてですが、これは
+`false && myString`であれば`false`を返しますが、`true && myString`であれば `myString`を返します。
 
 <%= commit "13-6", "Added active classes to the header." %>
 
-Now that users can vote on posts in real-time, you will see items jumping up and down the homepage as their ranking change. but wouldn't it be nice if there was a way to smooth out all this with a few well-timed animations?
-
-　これでユーザーはリアルタイムで投稿に投票することができるので、
-　ランキングが変化する（as＝ごとに？）、（items ？）が（jumping up and down the homepage ？）することがわかります。
-　しかし、
-　（wouldn't it be nice
-　　if there was a way to smooth out all this with a few well-timed animations?）
+これでユーザーはリアルタイムで投稿に投票することができるので、
+ランキングが変化する度に項目ががページ上で上下することがわかります。
+この変化時にアニメーションが滑らかできれば、素晴らしいことではないでしょうか？
