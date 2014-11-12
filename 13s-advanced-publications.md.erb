@@ -7,25 +7,36 @@ points: 10
 sidebar: true
 photoUrl: http://www.flickr.com/photos/ikewinski/8390558986/
 photoAuthor: Mike Lewinski
-contents: Learn more advanced patterns for manipulating publications.|See just how flexible publications and subscriptions can get.
+contents: パブリケーションを操作するためのより高度なパターンを学習。|どのように柔軟なパブリケーションとサブスクリプションが得ることができるかを知る。
 paragraphs: 36
 version: 1.7
 ---
 
-////
- 
-### Publishing a Collection Multiple Times
+ここまでであなたはパブリケーションとサブスクリプションがどのように相互作用するかをよく理解しているべきです。
+それでは、補助輪を取り除き、より少数の高度なシナリオを検討します。
 
-////
- 
-////
- 
-////
- 
-////
- 
-////
- 
+### コレクションを複数回のパブリッシュする
+
+[パブリケーションに関する私たちの最初のサイドバー](/chapters/publications-and-subscriptions/)
+にて、我々はより一般的なパブリケーションとサブスクリプションのパターンのいくつかを見て、
+非常に簡単な自身のサイトに実装するための`_publishCursor`関数作成方法を学びました。
+
+
+まずは、`_publishCursor`が正確に私たちのために何をするか思い出してみましょう:
+それは、与えられたカーソルに一致するすべての文書を受け取り、
+*同じ名前*のクライアントコレクションにそれらが来るようにしました。
+_パブリケーション_の名前が関わるものではないことに注意してください。
+
+これは、我々はすべてのコレクションのクライアントとサーバーのバージョンをリンクする
+*複数の*パブリケーションを持つことができることを意味します。
+
+我々はすでに我々が現在表示されている投稿に加えて、
+全ての記事のページ番号付きサブセットを公開したときに、
+[ページネーションの章](/chapter/pagination/)でこのパターンに遭遇しました。
+
+別の同様のユースケースは、文書の大規模なセット、
+ならびに単一の項目の完全な詳細の*概要*を公開することです：
+
 <%= diagram "doublecollection", "Publishing a collection twice", "pull-center" %>
 
 ~~~js
@@ -38,14 +49,32 @@ Meteor.publish('postDetail', function(postId) {
 });
 ~~~
 
-////
- 
-////
- 
-////
- 
-////
- 
+クライアントはこれら二つのパブリケーションをサブスクライブした場合に、
+その`'posts'`コレクションは2つのソースから取り込まれます：
+最初のサブスクリプションからはタイトルと著者の名前、第二サブスクリプションからは
+投稿の完全な詳細のリストです。
+
+Now when the client subscribes to those two publications, its `'posts'` collection gets populated from two sources: a list of titles and author's names from the first subscription, and the full details of a post from the second.
+
+`postDetail`によって公表後も（ただし、そのプロパティの一部のみで）
+`allPosts`によって公開されていることを実現するかもしれない。
+しかし、Meteorはフィールドを、オーバーラップの管理によってマージし重複なしの投稿を確保します。
+
+You may realize that the post published by `postDetail` is also being published by `allPosts` (although with only a subset of its properties). However, Meteor takes care of the overlap by merging the fields and ensuring there is no duplicate post.
+
+これは、素晴らしいです
+なぜなら、我々は投稿の要約のリストをレンダリングする際に、
+今必要なものを表示するために、
+私たちのためだけの十分なデータを持っているデータオブジェクトを扱っているからです。
+しかし、単一の投稿のためにページをレンダリングするとき、
+我々はそれを表示するために必要なすべてを持っています。
+もちろん、我々はすべてのフィールドが、この場合のすべての投稿で利用できることを期待しないように、
+クライアント上で注意する必要があります - これは一般的な落とし穴です！
+
+それはあなたがドキュメントプロパティを変化させることに制限されないということに留意すべきです。
+非常によく、両方のパブリケーションに同じプロパティでパブリッシュしますが、
+異なった順序のアイテムでした。
+
 ~~~js
 Meteor.publish('newPosts', function(limit) {
   return Posts.find({}, {sort: {submitted: -1}, limit: limit});
