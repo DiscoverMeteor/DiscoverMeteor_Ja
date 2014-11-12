@@ -1,29 +1,45 @@
 ---
-title: Advanced Publications
+title: 高度なパブリケーション
 slug: advanced-publications
 date: 0013/01/02
 number: 13.5
+points: 10
 sidebar: true
-contents: Learn more advanced patterns for manipulating publications.|See just how flexible publications and subscriptions can get. 
+photoUrl: http://www.flickr.com/photos/ikewinski/8390558986/
+photoAuthor: Mike Lewinski
+contents: パブリケーションを操作するためのより高度なパターンを学習。|どのように柔軟なパブリケーションとサブスクリプションが得ることができるかを知る。
 paragraphs: 36
 version: 1.7
 ---
 
-////
- 
-### Publishing a Collection Multiple Times
+ここまでであなたはパブリケーションとサブスクリプションがどのように相互作用するかをよく理解しているべきです。
+それでは、補助輪を取り除き、より少数の高度なシナリオを検討します。
 
-////
- 
-////
- 
-////
- 
-////
- 
-////
- 
-<%= diagram "doublecollection", "Publishing a collection twice", "pull-center" %>
+### コレクションを複数回パブリッシュする
+
+[パブリケーションに関する私たちの最初のサイドバー](/chapters/publications-and-subscriptions/)
+にて、我々はより一般的なパブリケーションとサブスクリプションのパターンのいくつかを見て、
+非常に簡単な自身のサイトに実装するための`_publishCursor`関数作成方法を学びました。
+
+まずは、`_publishCursor`が正確に何をするか思い出してみましょう:
+それは、与えられたカーソルに一致するすべての文書を受け取り、
+*同じ名前*のクライアントコレクションにそれらが来るようにしました。
+_パブリケーション_の名前が関わるものではないことに注意してください。
+
+First, let's recall what `_publishCursor` does for us exactly: it takes all the documents that match a given cursor, and pushes them down into the client-side collection *of the same name*. Notice that the name of the _publication_ is in no way involved.
+
+
+これは、我々はすべてのコレクションのクライアントとサーバーのバージョンをリンクする
+*複数の*パブリケーションを持つことができることを意味します。
+
+我々はすでに我々が現在表示されている投稿に加えて、
+全ての記事のページ番号付きサブセットを公開したときに、
+[ページネーションの章](/chapter/pagination/)でこのパターンに遭遇しました。
+
+別の同様のユースケースは、文書の大規模なセット、
+ならびに単一の項目の完全な詳細の*概要*を公開することです：
+
+<%= diagram "doublecollection", "一つのコレクションを２度パブリッシュする", "pull-center" %>
 
 ~~~js
 Meteor.publish('allPosts', function() {
@@ -35,14 +51,30 @@ Meteor.publish('postDetail', function(postId) {
 });
 ~~~
 
-////
- 
-////
- 
-////
- 
-////
- 
+クライアントはこれら二つのパブリケーションをサブスクライブした場合に、
+その`'posts'`コレクションは2つのソースから取り込まれます：
+最初のサブスクリプションからはタイトルと著者の名前、第二サブスクリプションからは
+投稿の完全な詳細のリストです。
+
+`postDetail`によって公表後も（ただし、そのプロパティの一部のみで）
+`allPosts`によって公開されていることを実現するかもしれない。
+しかし、Meteorはフィールドを、オーバーラップの管理によってマージし重複なしの投稿を確保します。
+
+You may realize that the post published by `postDetail` is also being published by `allPosts` (although with only a subset of its properties). However, Meteor takes care of the overlap by merging the fields and ensuring there is no duplicate post.
+
+これは、素晴らしいです
+なぜなら、我々は投稿の要約のリストをレンダリングする際に、
+今必要なものを表示するために、
+私たちのためだけの十分なデータを持っているデータオブジェクトを扱っているからです。
+しかし、単一の投稿のためにページをレンダリングするとき、
+我々はそれを表示するために必要なすべてを持っています。
+もちろん、我々はすべてのフィールドが、この場合のすべての投稿で利用できることを期待しないように、
+クライアント上で注意する必要があります - これは一般的な落とし穴です！
+
+それはあなたがドキュメントプロパティを変化させることに制限されないということに留意すべきです。
+異なった順序のアイテムで、同じプロパティでのパブリケーションもきちんとパブリッシュできました。
+
+
 ~~~js
 Meteor.publish('newPosts', function(limit) {
   return Posts.find({}, {sort: {submitted: -1}, limit: limit});
@@ -54,52 +86,87 @@ Meteor.publish('bestPosts', function(limit) {
 ~~~
 <%= caption "server/publications.js" %>
 
-### Subscribing to a Publication Multiple Times
+### 一つのパブリケーションを複数回サブスクライブする
 
-////
- 
-////
- 
-////
- 
-<%= diagram "subscribetwice", "Subscribing twice to one publication", "pull-center" %>
+私達はちょうど単一のコレクションを複数回パブリッシュする方法を見てきました。
+今度は、非常に類似した結果を達成することができる別のパターン:
+１回のパブリケーションで、複数回の*サブスクライブ*を行うパターンです。
 
-////
- 
+Microscopeでは、`posts`のパブリケーションに複数回サブスクライブしますが、Iron Routerは
+各サブスクリプション毎に設定して、切断を行います。*同時*に複数回サブスクライブできない理由はありません。
+
+例えば、同時に、メモリ内の最新なものと最良なものの投稿の両方をロードしたいとしましょう：
+For example, let's say we wanted to load both the newest and best posts in memory at the same time:
+
+<%= diagram "subscribetwice", "一つのパブリケーションに２度サブスクライブする", "pull-center" %>
+
+一つのパブリケーションを設定しています:
+
 ~~~js
 Meteor.publish('posts', function(options) {
   return Posts.find({}, options);
 });
 ~~~
 
-////
- 
+そして、我々は、このパブリケーションに複数回サブスクライブします。
+実際にはこれは、多かれ少なかれ、確かにMicroscopeでやっていることです。:
+
 ~~~js
 Meteor.subscribe('posts', {submitted: -1, limit: 10});
 Meteor.subscribe('posts', {baseScore: -1, submitted: -1, limit: 10});
 ~~~
 
-////
- 
-////
- 
-### Multiple Collections in a Single Subscription
 
-////
- 
-////
- 
-////
- 
-////
- 
-////
- 
-////
- 
-////
- 
-<%= diagram "multiplecollections", "Two collections in one subscription", "pull-center" %>
+正確には何がここで起きているのでしょうか？
+各ブラウザは、*二つ*の異なるサブスクリプション開き、
+サーバー上の同じパブリケーションに各々接続しているのです。
+
+各サブスクリプションは、そのパブリケーションに異なる引数を提供しますが、基本的に、
+書類の（異なる）セットは`posts`コレクションから摘み取られ、そして
+クライアントコレクションに送信されてます。
+
+同じパブリケーションに*同じ引数*で二回サブスクライブすることすらできます！
+有用であろう多くのシナリオを考えるのは難しいですが、柔軟性はある日便利だと思えるかもしれません！
+
+### 一つのサスククリプションで複数のCollection
+
+JOINを利用するMySQLのような、より伝統的なリレーショナルデータベースとは異なり、
+MongoのようなNoSQLのデータベースは、*非正規化*と**埋め込み*程度で全てです。
+それがMeteorのコンテキストでどのように機能するかを見てみましょう。
+
+それでは、具体的な例を見てみましょう。
+私達は投稿にコメントを追加しました、そしてこれまでのところ、
+幸せなことに我々はユーザーが見ている単一の投稿のコメントをパブリッシュするだけでした。
+
+しかしながら、
+私たちはフロントページ上のすべての投稿にコメントを見せたかったとします。
+(それによって投稿のページ構成が変わることを念頭に置いています。）
+このユースケースは、投稿にコメントを埋め込むための十分な理由を提示し、
+実際、コメント*カウント*を非正規化するための動機になったものです。
+and in fact is what pushed us to denormalize comment *counts*.
+
+もちろん、完全に`Comments`コレクションを取り除き、投稿内にコメントを埋め込むことができます。
+しかし、以前に*非正規化*の章で見たように、そうすることによって、
+独立したコレクションだった時とくらべの余分な利点のいくつかを失うことになります。
+
+しかし、別のコレクションを保持しながら、
+コメントを埋め込むことを可能にするサブスクリプションを含むトリックがあると判明しました。
+
+But it turns out there's a trick involving subscriptions that makes it possible to embed our comments while preserving separate collections.
+
+それではフロントページの投稿リストとともに、
+各々の投稿のためのトップ2のコメントのリストをサブスクライブしたいとしましょう。
+
+Let's suppose that along with our front-page list of posts, we want to subscribe to a list of the top 2 comments for each post.
+
+
+独立したコメントのパブリケーションで、特に、投稿のリストが何らかの方法（例えば最新10個）
+で制限されていた場合は、達成することは困難でしょう。
+例えば、この図のようなパブリケーションを書く必要があるでしょう：
+
+It would be difficult to accomplish this with an independent comments publication, especially if the list of posts was limited in some way (say, the 10 most recent). We'd have to write a publication that looked something like this:
+
+<%= diagram "multiplecollections", "二つのコレクションで一つのサブスクリプション", "pull-center" %>
 
 ~~~js
 Meteor.publish('topComments', function(topPostIds) {
@@ -107,24 +174,31 @@ Meteor.publish('topComments', function(topPostIds) {
 });
 ~~~
 
-////
- 
-////
- 
+`topPostIds`のリストが変更されるたびにパブリケーションは破棄され、再確立が必要になるので、
+これは、パフォーマンスの観点から問題となります。
+
+This would be a problem from a performance standpoint, as the publication would need to get torn down and re-established each time the list of `topPostIds` changed.
+
+近い方法があります。*コレクション*ごとに複数の*パブリケーション*を持つことができないですが、
+*パブリケーション*毎に複数*コレクション*持つことができる事実を使用します：
+
+
+There is a way around this though. We just use the fact that we can not only have more than one *publication* per *collection*, but we can also have more than one *collection* per *publication*:
+
 ~~~js
 Meteor.publish('topPosts', function(limit) {
   var sub = this, commentHandles = [], postHandle = null;
-  
-  // send over the top two comments attached to a single post
+
+  // 投稿に添付されるトップ2つのコメントを送信する
   function publishPostComments(postId) {
     var commentsCursor = Comments.find({postId: postId}, {limit: 2});
-    commentHandles[post._id] = 
-      Meteor.Collection._publishCursor(commentsCursor, sub, 'comments');
+    commentHandles[postId] =
+      Mongo.Collection._publishCursor(commentsCursor, sub, 'comments');
   }
-    
+
   postHandle = Posts.find({}, {limit: limit}).observeChanges({
     added: function(id, post) {
-      publishPostComments(post._id);
+      publishPostComments(id);
       sub.added('posts', id, post);
     },
     changed: function(id, fields) {
@@ -137,48 +211,89 @@ Meteor.publish('topPosts', function(limit) {
       sub.removed('posts', id);
     }
   });
-  
+
   sub.ready();
-  
+
   // make sure we clean everything up (note `_publishCursor`
   //   does this for us with the comment observers)
-  sub.onStop(function() { postsHandle.stop(); });
+  sub.onStop(function() { postHandle.stop(); });
 });
 ~~~
 
-////
- 
-////
- 
-////
- 
-### Linking different collections
+注意点としてパブリケーション内で何も返していません。
+マニュアルで`sub`自身(`.added`もしくはその仲間経由で)にメッセージを送信しています。
+だから、カーソルを返すことによって、`_publishCursor`に依頼する必要はありません。
 
-////
- 
-<%= diagram "linkedcollections", "One collection for two subscriptions", "pull-center" %>
+Note that we aren't returning anything in this publication, as we manually send messages to the `sub` ourselves (via `.added()` and friends). So we don't need to ask `_publishCursor` to do it for us by returning a cursor.
 
-////
- 
-////
- 
-////
- 
-////
- 
+今、私たち投稿をパブリッシュたびに、我々はまた、自動的にそれに接続され、トップ2つのコメントを公開します。
+そしてあとは、単一のサブスクリプションを呼ぶだけです！
+
+Now, every time we publish a post we also automatically publish the top two comments attached to it. And all with a single subscription call!
+
+しかし、Meteorのこのアプローチは非常に簡単とは言えませんが、
+あなたはまた、このパターンをより容易に使用することを目指す`publish-with-relations`パッケージ
+をAtmosphereに見ることができます。
+
+Although Meteor doesn't make this approach very straightforward yet, you can also look into the `publish-with-relations` package on Atmosphere, which aims to make this pattern easier to use.
+
+### 異なるコレクションとのリンク
+
+
+他にサブスクリプションの柔軟性の新発見の知識は私たちに何を与えることができるでしょう？
+`_publishCursor`を使用しない場合、サーバー上のソースコレクションは、
+クライアント上のターゲットコレクションと同じ名前を持つ必要がある制約に従う必要はありません。
+
+
+<%= diagram "linkedcollections", "2つのサブスクリプションのための1つのコレクション", "pull-center" %>
+
+これをしたいと思う理由の一つは*シングルテーブル継承*です。
+One reason why we would want to do this is *Single Table Inheritance*.
+
+
+投稿から共通のフィールドが格納されているだけでなく、
+内容に若干異なってるオブジェクトのさまざまな型を参照したかったとします。
+例えば、私たちは各投稿が通常のID、タイムスタンプ、およびタイトルを持ち、
+それに加えて、画像、ビデオ、リンク、またはテキストだけを備えた
+Tumblrに似たブログエンジンを構築することができたとします。
+Suppose that we wanted to reference various types of objects from our posts, each of which stored common fields but also differed slightly in content. For example, we could be building a Tumblr-like blogging engine where each post possesses the usual ID, timestamp, and title; but in addition can also feature an image, video, link, or just text.
+
+オブジェクトのどの種類かを示すために`type`が属性を使用して、
+単一の`'resources'`コレクション内にすべての種類のオブジェクトを格納することができます。
+(`video`、` image`、`link`など)
+
+We could store all these objects in a single `'resources'` collection, using a `type` attribute to indicate which sort of object they are. (`video`, `image`, `link`, etc.).
+
+そして、サーバー上の単一`Resources`コレクションを持っていて、そして、
+複数の` Videos`、`Images`等に専用のクライアント上の単一コレクションにマジックの力で
+変換することができます:
+
+And although we'd have a single `Resources` collection on the server, we could  transform that single collection into multiple `Videos`, `Images`, etc. collections on the client with the following bit of magic:
+
 ~~~js
   Meteor.publish('videos', function() {
     var sub = this;
-    
+
     var videosCursor = Resources.find({type: 'video'});
-    Meteor.Collection._publishCursor(videosCursor, sub, 'videos');
-    
+    Mongo.Collection._publishCursor(videosCursor, sub, 'videos');
+
     // _publishCursor doesn't call this for us in case we do this more than once.
     sub.ready();
   });
 ~~~
 
-////
- 
-////
- 
+我々は_publishCursor`に伝えるだけでビデオをパブリッシュできます。
+（ただ返却するだけです。）
+しかし、クライアント上の`resources`コレクションとしてパブリッシュするのではなく、
+その代わりに、`'resources'`ではなく`'videos'`としてパブリッシュしています。
+
+We are telling `_publishCursor` to publish our videos (just like returning) the cursor would do, but rather than publish to the `resources` collection on the client, instead we are publishing from `'resources'` to `'videos'`.
+
+別の似たアイデアは*全くサーバ側のコレクションがない*クライアント側のコレクションにパブリッシュを
+使用することです！
+たとえば、サードパーティのサービスからのデータをつかみ、
+クライアント側のコレクションでそれらをパブリッシュします。
+
+Another similiar idea is to use publish to a client side collection where there's *no server side collection at all!* For instance, you might grab the data from a 3rd party service, and publish them into a client-side collection.
+
+パブリッシュAPIの柔軟性のおかげで、可能性は無限大です。
