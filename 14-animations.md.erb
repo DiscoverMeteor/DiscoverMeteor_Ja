@@ -21,58 +21,133 @@ Meteorの最新の改良により、この章では、少し情報が古くな�
 あなたがそれに取り組むのを待っていたい場合は、我々は理解します。
 <% end %>
 
-### Meteor & the DOM
+今、リアルタイムの投票、スコアリング、ランキング機能を持っています。
+しかし、ホームページ上で投稿が飛び回るのは耳障りで、不規則なユーザーエクスペリエンスにつながります。
+我々は、ここを滑らかにするためにアニメーションを使用します。
 
-////
+### MeteorとDOM
 
-////
+私たちは(動き回る部分を作る)面白い部分を開始する前に、
+Meteorは、DOM(ドキュメントオブジェクトモデル - ページのコンテンツを構成するHTML要素コレクション)とどのように相互作用するかを理解する必要があります
+。
 
-////
+心に留めておくべき重要なポイントは、
+DOMの要素が本当に「移動」することができないことです。
+しかし、これらは(これはMeteorではなく、DOM自体の制限であることに注意してください)削除され、作成することができます。
+したがって、要素A及びBの場所の切り替えの錯覚を与えるために、
+Meteorが実際に要素Bを削除し、要素Aの前に新しいコピー(B')を挿入します。
 
-////
+私たちは、単に新しい位置に移動し、Bをアニメーション化することはできませんように、
+Bは、すぐにMeteorが(リアクティブのおかげで瞬時に起こる)ページを再レンダリングするように消えてしまいますので、これは、アニメーションが少しトリッキーになります。しかし、心配しないでください、私たちは道を見つけることができます。
 
-1. ////
-2. ////
-3. ////
-4. ////
-5. ////
-6. ////
+### ソ連のランナー
+1980年は冷戦の時代でした。オリンピックは、モスクワで開催され、
+ソ連はどんな犠牲を払っても100メートルのダッシュを勝つことを決定しました。
+で、華麗なソ連の科学者のグループが選手にテレポーターを装備しました、
+とすぐに銃声が聞こえた瞬間にランナーが瞬時にフィニッシュラインに移されました。
 
-////
+ありがたいことに、レース関係者は直ちに違反に気づき、
+他のみんなのように走ることで、レースに参加することが許されているので、
+選手は、テレポートしてスタート台に戻るしか選択の余地がありませんでした。
 
-<%= diagram "animation_diagram", "Swtiching two posts", "pull-center" %>
+私の史料は、信頼性がないので話半分でその話を取る必要があります。しかし、
+この章を進める上で「ソ連ランナーとテレポーターの話」を心に留め置いてください。
 
-////
+### Breaking It Down
 
-////
+Meteorが更新を受信して、リアクティブにDOMを変更すると、私たちの投稿が瞬時にちょうどソ連ランナーのように、
+その最終的な位置にテレポートされます。違いはオリンピックかアプリ内かどうかです。
+しかし、我々は単にものが周りにテレポートすることはできません。
+だから我々は戻って「スタート台」に要素をテレポートし、
+それを ゴールラインまで"走らせる"を作ります(言い換えれば、アニメーション化)。
 
-////
+そのようにポストA及びB(それぞれ、位置P1、P2に位置する)を切り替えるために、我々は次の手順を行います:
 
-### Proper Timing
+1. Bを削除する
+2. DOMで、Aの前にB'を作成します。
+3. B'をP2へテレポート
+4. Aをp1にテレポート
+5. Aをp2にアニメーション
+6. B'をP1にアニメーション
 
-////
+次の図は、より詳細にこれらの手順を説明します。
 
-////
+<%= diagram "animation_diagram", "Switching two posts", "pull-center" %>
 
-////
+もう一度くりかえしますが、手順3と4で、
+Aとその位置にB 'が即座に「テレポート」するので、*アニメーション*していません。
+これは瞬間的ですが、Bが削除されなかったような錯覚を与え、
+適切に両方の要素が戻って彼らの新しい位置にアニメーション化されるように配置されます。
 
-////
+Again, in steps 3 and 4 we're not *animating* A and B' to their positions but “teleporting” them instantly. Since this is instantaneous, it will give the illusion that B was never deleted, and properly position both elements to be animated back to their new position.
 
-////
+ありがたいことに、Meteorはステップ1と2の制御をするので、唯一ステップ3〜6を心配する必要があります。
 
-////
+また、ステップ5と6にあるすべての私たちはそれらの適切なスポットに要素を移動しているやっている。
+だから、唯一の部分は、
+私たちはアニメーションの出発点に要素を送信する、
+すなわちステップ3、4を心配する必要があります。
 
-### CSS Positioning
+Moreover, in steps 5 and 6 all we're doing is moving the elements to their proper spot. So the only part we really need to worry about is steps 3 and 4, i.e. sending the elements to the animation's starting point.
 
-////
+### 適切なタイミング
 
-////
+これまではアニメーション化の話ではありませんでした。
+今、私たちは私たちの投稿をアニメーション化する*方法*について話します。
 
-////
+手順3と4の手段の答えは、投稿の `_rank`プロパティ(順序に依存する)を変化させることです。
 
-////
+手順5と6は少しトリッキーです。こう考えてください：
+もし、完全に論理的なアンドロイドに「5分間北に走れ、終わったら、５分間南に走れ」と命令したとしたら、
+次に、それはおそらく、最終的な位置が同じ場所になってしまいますので、
+エネルギーを節約し、まったく実行されないでしょう。
 
-////
+だから、全体の10分の間にあなたのアンドロイドが走ることを確実にしたい場合は、
+それが最初の5分を走りきるまで*待たなければならない*ということです。そして*その後*に戻って来るように指示を出します。
+
+
+ブラウザは、同様の方法で動作します:単に古い座標を新たな座標に置き換えても、
+同時にそれを両方の指示を出した場合には、何も起こらないでしょう。
+言い換えれば、ブラウザは、時間単位で別個の点としての位置の変更を登録する必要あり。そうしないと、
+それらをアニメーション化することができないという事です。
+
+The browser works in a similar way: if we just gave it both instructions simultaneously, the new coordinates would simply replace the old ones and nothing would happen. In other words, the browser needs to register the position changes as separate points in time, otherwise it won't be able to animate them.
+
+Meteorはこのために組み込みのコールバックを提供できませんでした。しかし、
+`Meteor.setTimeout()`を使うことで、数ミリ秒後に実行を延期し、近いことを実現しました。
+
+Meteor doesn't provide a built-in callback for this, but we can fake it using `Meteor.setTimeout()`, which simply takes a function and defers its execution by a few milliseconds.
+
+### CSSによる位置決め
+
+ページの周りに並べ替えされている投稿をアニメーション化するために、
+我々はCSSの領土に挑戦する必要があります。
+CSSの位置決めの簡単な復習を順番にしていきます。
+
+ページ上の要素は、デフォルトでは**静的**な位置決めを使用しています。
+静的に位置付け要素は、単にページのフロー内に収まると、
+画面上の座標を変更したり、アニメーションすることができません。
+
+Elements on a page use **static** positioning by default. Statically positioned elements just fit within the flow of the page, and their coordinates on the screen cannot be changed or animated.
+
+
+一方**相対**位置決め要素も、ページのフローに収まるって固定されますが、
+*元の位置に対して相対的に位置決め*をできます。
+
+**Relative** positioning on the other hand means that the element also fits in the flow of the page, but can be positioned *relative to its original position*.
+
+
+さらに一歩進んで、**絶対的な位置決め**は、あなたは要素の特定のx/ y座標が**文書**または
+**親要素に対する最初の絶対座標または相対座標**に対する相対座標で与えることができます。
+
+**Absolute** positioning goes one step further and lets you give  the element specific x/y coordinates relative to the **document** or **the first absolute or relative-positioned parent element**.
+
+
+私達は投稿をアニメーション化するために、相対的位置付けを使用します。
+我々はすでにCSSの調整をしましたが、
+すべては、あなたのスタイルシートにこのコードを追加するだけです:
+
+We'll use relative positioning to animate our posts. We've already taken care of the CSS for you, but if you needed to do it yourself all you would do is add this code to your stylesheet:
 
 ~~~css
 .post{
@@ -82,46 +157,76 @@ Meteorの最新の改良により、この章では、少し情報が古くな�
 ~~~
 <%= caption "client/stylesheets/style.css" %>
 
-////
+これはステップ5と6は非常に簡単になります：私たちが行う必要があるのは、
+`top`から`0px`へ(デフォルト値)にリセットし、投稿は戻って "ノーマル"の位置にスライドさせることです。
 
-////
+This makes steps 5 and 6 quite easy: all we need to do is reset `top` to `0px` (its default value) and our posts will slide back to their "normal" position.
+
+
+基本的に、私たちの唯一の課題は
+それら(ステップ3,4)*から新しい位置に相対的にアニメーションさせる。　ことを考えることです。
+言い換えると、どれくらい移動させるかを考えます。
+しかし、それは難しくはないです。：正確なオフセットは単純に投稿の前の位置を新しいポジションから引いた値です。
+
+So basically, our only challenge is figuring where to animate them *from* (steps 3 and 4) relative to their new position. In other words, how much to offset them. But that's not very hard either: the correct offset is simply a post's previous position minus its new one.
 
 <% note do %>
 
-### Position:absolute
+### position:absolute
 
-////
+私たちは、相対的的な親要素からの座標指定に`position:absolute`を使うこともできます。
+しかし、絶対配置要素の大きな欠点は、ページのフロー上から該当要素を削除した場合に、親コンテナも崩壊させる原因となってしまうことです。
 
-////
+
+We could also use `position:absolute` with a relative parent to position our elements. But a big downside of absolutely positioned elements is that they're completely removed from the flow of the page, causing their parent container to collapse as if it were empty.
+
+つまり、これは人工的に自然にブラウザリフロー要素を残すのは、
+JavaScriptを介してコンテナの高さを設定する必要があることを意味します。そのため、可能な限りそれは相対的な位置に固執するのがベストです。
+
+This in turns means we'd need to artificially set the height of the container via JavaScript, instead of leaving the browser reflow elements naturally. Consequently, whenever possible it's best to stick with relative positioning.
 
 <% end %>
 
 ### Total Recall
 
-////
+しかしもう一つの問題を持っています。
+要素Aは、DOMに残り続けており、従ってその前の位置を「記憶」することができますが、
+要素Bは生まれ変わりを経験し、そのメモリがきれいにリセットされB`として新たに生成されます。
 
-////
+We do have one more problem though. While element A persists in the DOM and can thus "remember" its previous position, element B experiences reincarnation and comes back to life as B' with its memory wiped clean.
 
-> //// 
+だから、私たちがやることはページ内の投稿の現在位置を見つけ**ローカルコレクション**でその位置を登録します。
+このローカルコレクションは、それ*だけ*(つまりサーバー上に無い)ブラウザのメモリに住んでいること以外は普通のMeteorのコレクションのように動作します。
+この方法は、アニメーション化するため、投稿が削除して再作成した場合でも、知ることができるようにします。
 
-////
 
-////
+So what we'll do is find out a post's current position in the page, and then store that position in a **local collection**. A local collection works just like a regular Meteor collection, excepts that it *only* lives in the browser's memory (i.e. not on the server). This way, even when a post is deleted and recreated, we'll still be able to know where we're supposed to animate it from.
 
-### Ranking Posts
+### 投稿ランキング
 
-////
+我々は投稿ランクについて話をしてきたが、それ結果として私たちのコレクションにリストされている順序だから、
+この「ランク」は実際、投稿のプロパティとして存在しません。ランクに応じ投稿をアニメーション化できるようにしたい場合は、
+我々は何とか空中からこのプロパティを想起させる必要があります。
 
-////
+We've been talking about posts rank, but this "rank" does not actually exist as a post property, since it's just a consequence of the order in which posts are listed in our collection. If we want to be able to animate posts according to their rank, we'll have to somehow conjure up this property out of thin air.
 
-////
+ランクはあなたが投稿を並べ替える方法によって異なり、相対的な性質であるので、
+我々は、データベース自体でこの`rank`プロパティを置くことができないことに注意してください。
+(例えば、投稿を日付順でランク付けしたり、次にポイント順でソートしたりできます。)
 
-////
+Note that we can't put this `rank` property in the database itself, since rank is a relative property that depends on how you sort posts (i.e. a post can be ranked first when sorting by date, but third when sorting by points).
+
+理想的には私たちの`newPosts`と` topPosts`コレクションでそのプロパティを置くでしょうが、
+Meteorはまだこれを行うための便利なメカニズムを提供していません。
+
+
+なので、私たちは最後の可能なステップ、`postList`テンプレートマネージャで`rank`を挿入します：
+
+So instead, we'll insert `rank` at the last possible step, the `postList` template manager:
 
 ~~~js
 Template.postsList.helpers({
   postsWithRank: function() {
-    this.posts.rewind();
     return this.posts.map(function(post, index, cursor) {
       post._rank = index;
       return post;
@@ -129,12 +234,16 @@ Template.postsList.helpers({
   }
 });
 ~~~
-<%= caption "/client/views/posts/posts_list.js" %>
+<%= caption "/client/templates/posts/posts_list.js" %>
 <%= highlight "2~8" %>
 
-////
+代わりに、単に`Posts.find({}, {sort: {submitted: -1}, limit: postsHandle.limit()})`のカーソルを返します。
+このカーソルは`posts`ヘルパーの時と同じように
+`postsWithRank`はカーソルを取りを取り、`_rank`を投稿それぞれに格納します。
 
-////
+Instead of simply returning the `Posts.find({}, {sort: {submitted: -1}, limit: postsHandle.limit()})` cursor like our previous `posts` helper, `postsWithRank` takes the cursor and adds the `_rank` property to each of its documents.
+
+`postsList`テンプレートの更新を忘れないでください:
 
 ~~~html
 <template name="postsList">
@@ -142,141 +251,264 @@ Template.postsList.helpers({
     {{#each postsWithRank}}
       {{> postItem}}
     {{/each}}
-    
+
     {{#if nextPath}}
       <a class="load-more" href="{{nextPath}}">Load more</a>
     {{/if}}
   </div>
 </template>
 ~~~
-<%= caption "/client/views/posts/posts_list.html" %>
+<%= caption "/client/templates/posts/posts_list.html" %>
 
 <%= highlight "3" %>
 
+### Putting It Together
+
+私たちのアニメーションが私たちのDOM要素のCSS属性とクラスに影響を与えますので、
+我々は`postItem`テンプレートに動的な`{{attributes}}`ヘルパーを追加します：
+
+Since our animation will affect our DOM element's CSS attributes and classes, we'll add a dynamic `{{attributes}}` helper to the `postItem` template:
+
+```html
+<template name="postItem">
+  <div class="post" {{attributes}}>
+
+  //..
+
+</template>
+```
+<%= caption "/client/templates/posts/post_item.html" %>
+<%= highlight "2" %>
+
+このやり方で、`{{attributes}}`ヘルパーを使うことで、Sacebarsの隠された機能のロックを解除します:
+返却された`attributes`オブジェクトのプロパティはDOMのHTMLの属性(`class`, `style`等)にマッピングされます。
+
+By using the `{{attributes}}` helper in this fashion, we also unlock a hidden feature of Spacebars: any property of the returned `attributes` object will get mapped to the DOM element's HTML attributes (such as `class`, `style`, and so on).
+
+
+それでは`attributes`ヘルパーを作成することによって、すべてのものを一緒に入れてみましょう：
+
+Let's put everything together by creating the `attributes` helper:
+
+~~~js
+var POST_HEIGHT = 80;
+var Positions = new Mongo.Collection(null);
+
+Template.postItem.helpers({
+
+  //..
+
+  },
+  attributes: function() {
+    var post = _.extend({}, Positions.findOne({postId: this._id}), this);
+    var newPosition = post._rank * POST_HEIGHT;
+    var attributes = {};
+
+    if (! _.isUndefined(post.position)) {
+      var offset = post.position - newPosition;
+      attributes.style = "top: " + offset + "px";
+      if (offset === 0)
+        attributes.class = "post animate"
+    }
+
+    Meteor.setTimeout(function() {
+      Positions.upsert({postId: post._id}, {$set: {position: newPosition}})
+    });
+
+    return attributes;
+  }
+});
+
+//..
+~~~
+<%= caption "/client/templates/posts/post_item.js" %>
+<%= highlight "1~2, 8~26" %>
+
+言い換えると、ドキュメントの最上部に、`.post`div要素内の各DOM要素の高さを、設定しています。
+これは、この高さに変化が(例えば、二行上の記事のタイトルの折り返しが)私たちのアニメーションのロジックを破壊する明らかな欠点を提示します。
+しかし、物事はシンプルに保つために、我々は、すべてのポストが今のところ正確に80ピクセルに高くなると仮定します。
+
+At the very top of our document, we're setting the height of each DOM element, in other words our `.post` divs. This presents the obvious downside that any change to this height (for example, a post title wrapping on two lines) will break our animation logic. But for the sake of keeping things simple, we'll assume that every post will be exactly 80 pixels high for now.
+
+次に、我々は`Positions`という名前のローカルコレクションを宣言しています。
+ローカルコレクション(つまり、クライアント専用)であるように引数は、`null`を渡す事に、注意してください。
+
+Next, we're declaring a local collection named `Positions`. Note that passing `null` as an argument lets Meteor know that this is a local (in other words, client-only) collection.
+
+今、私たちは`attributes`ヘルパーを構築する準備が整いました。
+
+We're now ready to build our `attributes` helper.
+
 <% note do %>
 
-### Be Kind, Rewind
+### Running Schedule
 
-////
+多くの場合、リアクティブコードの一部を実行されたことを把握するのは難しいです。
+それでは、`attributes`ヘルパーについて深く見てみましょう。
 
-////
+It can often be hard to figure out just when a piece of reactive code will run. So let's take a deeper look at the  `attributes` helper.
 
-////
+テンプレートが最初にレンダリングされるときに、すべてのヘルパーは、一度だけ実行されます。
+`_rank`プロパティへの依存のため、それはまた、項目が変更されるたびに、毎回投稿のランキングの変更を再実行します。
+そして最後に、依存する`Positions`コレクションへの変更も再実行することを意味します。
+
+Like every helper, it will run once when the template is first rendered. Because of its dependency on the `_rank` property, it will also re-run every time a post's ranking changes. And finally, its dependency on the `Positions` collection also means it will re-run whenever the item in question is modified.
+
+
+これは、ヘルパーが連続して2回または3回実行するかもしれないことを意味します。
+これは最初は無駄に思えるかもしれないが、それはちょうどリアクティブな方法の仕組みです。
+あなたがそれに慣れると、それは単にコードを考えるための別の方法になります。
+
+This means that the helper might run two or three times in a row. This might seem wasteful at first, but it's just the way reactivity works. Once you get used to it, it will just become another way of thinking about code.
 
 <% end %>
 
-### Putting it together
+### The Attributes Helper
 
-////
+まず、`Positions`コレクションに私達の投稿の位置を検索しますとクエリの結果を拡張した`this`(このヘルパーにおいては現在の投稿に相当)、
+がかえります。
+次に、ページの先頭にDOM要素の新しい位置を把握するために、 `_rank`プロパティを使用します。
 
-~~~js
-Template.postItem.helpers({
-  //...
-});
+First, we'll look up our post's position in the `Positions` collection and extend `this` (which in this helper corresponds to the current post) with the result of our query. We then use the `_rank` property to figure out the DOM element's new position relative to the top of the page.
 
-Template.postItem.rendered = function(){
-  // animate post from previous position to new position
-  var instance = this;
-  var rank = instance.data._rank;
-  var $this = $(this.firstNode);
-  var postHeight = 80;
-  var newPosition = rank * postHeight;
- 
-  // if element has a currentPosition (i.e. it's not the first ever render)
-  if (typeof(instance.currentPosition) !== 'undefined') {
-    var previousPosition = instance.currentPosition;
-    // calculate difference between old position and new position and send element there
-    var delta = previousPosition - newPosition;
-    $this.css("top", delta + "px");
-  }
-  
-  // let it draw in the old position, then..
-  Meteor.defer(function() {
-    instance.currentPosition = newPosition;
-    // bring element back to its new original position
-    $this.css("top",  "0px");
-  }); 
-};
+我々は今、二つの別々のケースを管理する必要があります。:
+、テンプレートは、(A)をレンダリングしている、かプロパティが(B)を変更しているためリアクティブに実行しているかなので、
+そのためにヘルパーが動いています。
 
-Template.postItem.events({
-  //...
-});
-~~~
-<%= caption "/client/views/posts/post_item.js" %>
-<%= highlight "5~27" %>
+We must now manage two separate cases: either the helper is running because the template is being rendered (A), or it's running reactively because a property changed (B).
+
+唯一ケースBだけで、要素をアニメーション化したいので、
+ケースBであることを確認するため、`post.position`が定義されている`ことを確認してください、
+(後々定義されている*方法*を示します)。
+
+We only want to animate the element in case B, which is why we make sure that `post.position` is defined (we'll see *how* it's defined shortly).
+
+しかも、ケースBは、2つのサブケース、B1とB2が含まれています:
+DOM要素「スタート台」(その前の位置)*テレポート*して戻っているか
+またはその前の位置から新しい位置へ*アニメート*しているかです。
+
+What's more, case B includes two sub-cases, B1 and B2: either we're *teleporting* our DOM element back to the “starting blocks” (its previous position), or we're *animating* it from its previous position to its new one.
+
+ここで`offset`変数の話です。
+我々は*相対*ポジショニングを使用しているので、我々は、
+現在の位置に*相対*要素を送信するために場所を把握したいと思うところです。これは、以前の位置から新しい位置を差し引くことを意味します。
+
+This is where the `offset` variable comes in. Since we're using *relative* positioning, we'll want to figure out where to send the element *relative* to its current position. This means subtracting the new position from the previous one.
+
+
+我々は、ケースB1またはB2にいるかどうかを把握するために、我々は単に`offset`を見ることができます：
+`offset`が0と異なるなら、それは我々が離れてその原点から*移動していった*要素だことを意味します。
+一方`offset`が0に等しい場合、それはその原点座標に*アニメーションして*戻って*いることを意味し、
+我々はそれがゆっくりと遷移することを確認するために要素にクラス`animate`を追加することができます。
+
+To figure out whether we're in case B1 or B2, we can simply look at `offset`: if `offset` is different than 0, it means we're *moving* the element *away* from its origin. On the other hand if `offset` is equal to 0, it means we're *animating* the element *back* to its origin coordinate, and we can add the class `animate` to the element to make sure it transitions slowly.
+
+### Timing Out
+
+特定のプロパティが変更されたときに、これらの3つの状況(A、B1、およびB2)は、すべてのリアクティブにトリガされます。
+この場合、`setTimeout`関数は`Positions`コレクションを変更することにより、リアクティブコンテキストの再評価をトリガします。
+
+These three situations (A, B1, and B2) are all triggered reactively when certain properties change. In this case, the `setTimeout` function triggers the reevaluation of the reactive context by modifying the `Positions` collection.
+
+ユーザーが最初にページをロードするときに、全体の反応性の流れはこのような何かを行く：
+
+So when a user first loads the page, the whole reactivity flow goes something like this:
+
+
+- `attributes`ヘルパーは、初めて実行されます。
+- `post.position`が定義されていません**(A)**。
+- `setTimeout`は実行され`post.position`を定義します。
+- リアクティブに`attributes`ヘルパーが再実行されます。
+- `offset`は0から0に移動するので(目に見えるアニメーションはなかった)**(B2)**、何の動きはなかった。
+
+- The `attributes` helper runs for the first time.
+- `post.position` is not defined **(A)**.
+- `setTimeout` runs, defining `post.position`.
+- The `attributes` helper re-runs reactively.
+- There has been no movement, so `offset` goes from 0 to 0 (no visible animation) **(B2)**.
+
+
+そして、ここupvoteが検出されたときに何が起こるかです：
+And here's what happens when an upvote is detected:
+
+- `_rank`は変更され`attributes`ヘルパーの再評価をトリガします。
+- `post.position`は**(B)**によって定義されています。
+- `** offset`が0に等しくないので、アニメーションは**(B1)**が存在しません。
+- `setTimeout`は`post.position`を再定義、実行します。
+- リアクティブに`attributes`ヘルパー再実行されます。
+- `offset`は**(B2)**0に戻ります(アニメーション実行)。
+
+- `_rank` is modified, triggering a reevaluation of the `attributes` helper.
+- `post.position` is defined **(B)**.
+- `offset` is not equal to 0, so there is no animation **(B1)**
+- `setTimeout` runs, redefining `post.position`.
+- The `attributes` helper re-runs reactively.
+- `offset` goes back to 0 (with animation) **(B2)**.
+
+
+今すぐあなたのサイトを開いてupvoting始める。あなたは今ポストは優しく上下に移動し、バレエのような優雅でダウン表示されるはずです！
+
+Now open your site and start upvoting. You should now see posts gently moving up and down with ballet-like grace!
 
 <%= commit "14-1", "Added post reordering animation." %>
 
-////
+### 新規投稿のアニメーション
 
-////
-
-////
-
-### Animating New Posts
-
-////
-
-////
-
-1. ////
-2. ////
-
-////
-
-////
+投稿が正しく並べ替えていますが、まだ「新しい投稿」のアニメーションを持っていません。
+新しい投稿が単純に私たちのリストの一番上にポップアップ表示される代わりに、フェードインするようにしてみましょう。
 
 ~~~js
-Template.postItem.helpers({
-  //...
-});
+//..
 
-Template.postItem.rendered = function(){
-  // animate post from previous position to new position
-  var instance = this;
-  var rank = instance.data._rank;
-  var $this = $(this.firstNode);
-  var postHeight = 80;
-  var newPosition = rank * postHeight;
-  
-  // if element has a currentPosition (i.e. it's not the first ever render)
-  if (typeof(instance.currentPosition) !== 'undefined') {
-    var previousPosition = instance.currentPosition;
-    // calculate difference between old position and new position and send element there
-    var delta = previousPosition - newPosition;
-    $this.css("top", delta + "px");
+attributes: function() {
+  var post = _.extend({}, Positions.findOne({postId: this._id}), this);
+  var newPosition = post._rank * POST_HEIGHT;
+  var attributes = {};
+
+  if (_.isUndefined(post.position)) {
+    attributes.class = 'post invisible';
   } else {
-    // it's the first ever render, so hide element
-    $this.addClass("invisible");
+    var delta = post.position - newPosition;
+    attributes.style = "top: " + delta + "px";
+    if (delta === 0)
+      attributes.class = "post animate"
   }
-  
-  // let it draw in the old position, then..
-  Meteor.defer(function() {
-    instance.currentPosition = newPosition;
-    // bring element back to its new original position
-    $this.css("top",  "0px").removeClass("invisible");
-  }); 
-};
 
-Template.postItem.events({
-  //...
-});
+  Meteor.setTimeout(function() {
+    Positions.upsert({postId: post._id}, {$set: {position: newPosition}})
+  });
+
+  return attributes;
+}
+
+//..
 ~~~
-<%= caption "/client/views/posts/post_item.js" %>
-<%= highlight "19~22,28" %>
+<%= caption "/client/templates/posts/post_item.js" %>
+<%= highlight "8~10" %>
+
+私たちはここでやっていることはケース**(A)**を分離し、要素に`invisible`のCSSクラスを追加しています。
+ヘルパーが次にリアクティブに再実行され、要素が代わりに`animate`クラスを取得すると、
+不透明度のアニメーション変化により要素をフェードインされます。
+
+What we're doing here is isolating case **(A)** and adding the `invisible` CSS class to the element. When the helper next re-runs reactively and the element gets the `animate` class instead, the difference in opacity will be animated and fade the element in.
 
 <%= commit "14-2", "Fade items in when they are drawn." %>
-
-////
 
 <% note do %>
 
 ### CSS & JavaScript
 
-////
+あなたは、私たちはアニメーションをトリガするために、 `.invisible` CSSクラスを使用しての代わりに、私たちはtop``のためにした直接のようにプロパティopacity` CSSを`アニメーション化していることに気づいたかもしれません。 top``のために、我々はインスタンスデータに依存して特定の値にプロパティをアニメーションするために必要なためです。
 
-////
+You might have noticed that we're using an `.invisible` CSS class to trigger the animation instead of animating the CSS `opacity` property directly like we did for `top`. This is because for `top`, we needed to animate the property to a specific value that depended on the instance data.
+
+一方、ここでは唯一の独立してデータの要素を表示し、非表示にしたい。それは可能な限り、あなたのJavaScriptのあなたのCSSを保つことをお勧めしますので、私たちは私たちのスタイルシートでアニメーションの細部にわたってのみ追加し、ここにクラスを削除し、指定します。
+
+On the other hand, here we only want to show and hide an element independently of its data. Since it's a good idea to keep your CSS out of your JavaScript as much as possible, we'll only add and remove the class here, and specify the details of the animation over in our stylesheet.
 
 <% end %>
 
-////
+我々は最終的に私たちが望んでアニメーションの振る舞いを持っている必要があります。あなたのアプリをロードし、それを試してみる！
+そして、あなたはまた、あなたが他のトランジションを考え出すことができるかどうかを確認するために、 `.post.animated`クラスで遊ぶことができます。ヒント：[CSSの簡単な機能](http://matthewlein.com/ceaser/)を開始するには良い場所です！
+
+We should finally have the animation behavior we wanted. Load up your app and give it a try! And you can also play around with the `.post.animated` classes to see if you can come up with other transitions. Hint: [CSS easing functions](http://matthewlein.com/ceaser/) are a good place to start!
