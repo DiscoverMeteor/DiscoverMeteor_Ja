@@ -8,37 +8,36 @@ paragraphs: 49
 version: 1.7
 ---
 
-第一印象は重要です。Meteorのインストールプロセスは比較的痛みを伴いません。
+なんでも第一印象は重要ですよね。Meteorのインストールは非常に簡単です。
 
-大抵の場合最初にターミナルウインドウを開けて、以下をタイプするだけでMeteorがインストールできます。
+(大抵の場合)ターミナルウインドウを開いて、以下をタイプするだけでMeteorがインストールできます。
 
 ~~~bash
 $ curl https://install.meteor.com | sh
 ~~~
 
-これでMeteorをあなたのシステム上に実行させ、Meteorを使う準備ができます。
+これで、あなたのシステム上でMeteorを使う準備ができました。
 
 <% note do %>
 
-### *Not* インストールしてはいけない場合
+### *インストールしてはいけない場合*
 
-ローカルにMeteorをインストールできない（もしくはしたくない場合）、ここを[Nitrous.io](http://nitrous.io).
-
-を確認する事をお勧めします。Nitrous.io はアプリを実行させ、ブラウザー上でコードを編集させてくれるサービスです。
-そして、短いガイドを[a short guide](https://www.discovermeteor.com/blog/meteor-nitrous)に描いたのでセットアップするのに便利だと思います。
+ローカルにMeteorをインストールできない（もしくはしたくない場合）、ここを[Nitrous.io](http://nitrous.io)を確認する事をお勧めします。
+Nitrous.io はアプリを実行させ、ブラウザー上でコードを編集できるサービスです。
+短いガイドを[a short guide](https://www.discovermeteor.com/blog/meteor-nitrous)に書いたのでセットアップの際に参考にしてください。
 
 <% end %>
  
-### 簡単なアプリの作成。
+### 簡単なアプリの作成
 
-Meteorをインストールしたので、簡単なアプリを作成してみましょう。まず,
+インストールが完了したので、さっそく簡単なアプリを作成してみましょう。まず,
 Meteorのコマンドラインのツール'meteor'を使います。
 
 ~~~bash
 $ meteor create microscope
 ~~~
 
-このコマンドはMeteorをダウンロードして、基本的な物をセットアップしてくれ、Meteorプロジェクトの準備をしてくれます。これが終わったら、`microscope/`ディレクトリーをみて、次の項目が構成されているか確認してください。
+このコマンドはMeteorをダウンロードする、基本的な物をセットアップするなど、Meteorプロジェクトを始める準備をしてくれます。これが終わったら、`microscope/`ディレクトリーをみて、次の項目が構成されているか確認してください。
 
 ~~~bash
 microscope.css  
@@ -46,25 +45,25 @@ microscope.html
 microscope.js   
 ~~~
 
-Meteorがあなたの為に作ったアプリは簡単なパターンのお手本を示すボイラープレートアプリケーションです。
+これは、Meteorがあなたの為に作った簡単なボイラープレートアプリケーションです。
 
-私たちのアプリが沢山の事をしなくても、実行はできます。アプリを実行するにはタームなるに戻って次をタイプします：
+このアプリを実行してみましょう。実行は簡単です。ターミナルに戻って次をタイプします：
 
 ~~~bash
 $ cd microscope
 $ meteor
 ~~~
 
-次にあなたの画面のブラウザーを`http://localhost:3000/` (もしくは `http://0.0.0.0:3000/`と同様にします。) に合わせてください、そしてこのような物を見てください。
-
+次にあなたの画面のブラウザーで`http://localhost:3000/` (もしくは `http://0.0.0.0:3000/`と同様にします。) を開いてください。以下のような文言が表示されていることと思います。
 
 <%= screenshot "2-1", "Meteor's Hello World." %>
 
 <%= commit "2-1", "Created basic microscope project." %>
 
-おめでとうございます！初めてMeteorでアプリを実行する事ができました。ところで、アプリを一旦止めて、アプリが起動しているターミナルタブに持ってきて、`ctrl+c`を押してください。
+おめでとうございます！初めてMeteorでアプリを実行する事ができました。
 
-そして、Gitを使っているなら、これは`git init`で初めてリポするいいタイミングですよ。
+ここで、アプリを一旦止めて、アプリが起動しているターミナルタブに持ってきて、`ctrl+c`を押してください。
+もしGitを使っているなら、ここで`git init`でリポジトリを作成しておくと良いでしょう。
 
 
 <% note do %>
@@ -74,7 +73,7 @@ $ meteor
 MeteorがMeteoriteと呼ばれる外部の管理パッケージに頼っていた時期がありました。Meteor Ver0.9.0以来、Meteor自体に吸収されてからにMeteoriteはもう必要なくなりました。
 
 
-もしあなたがこの本、もしくはMeteor関連のマテリアルをブラウズしている間に、Meteoriteの `mrt`のコマンドラインのユーティリティに関連するものに出くわしたら、
+もしあなたがこの本、もしくはMeteor関連のマテリアルを閲覧している間に、Meteoriteの `mrt`のコマンドラインのユーティリティに関連するものに出くわしたら、
 安全に通常の`meteor`に置き換えればいいです。
 So if you encounter any references to Meteorite's `mrt` command line utility throughout this book or while browsing Meteor-related material, you can safely replace them by the usual `meteor`. 
 
@@ -82,72 +81,71 @@ So if you encounter any references to Meteorite's `mrt` command line utility thr
 
 ### パッケージを追加する
 
-Meteorのパッケージシステムを[Bootstrap](http://getbootstrap.com/)のフレームワークを私たちのプロジェクトに追加して使えるようになりました。
+Meteorのパッケージシステムを使って[Bootstrap](http://getbootstrap.com/)フレームワークをプロジェクトに追加することができます。
+
+これは、Meteorのコミュニティーメンバーの [Andrew Mao](https://github.com/mizzao) (the “mizzao” in `mizzao:bootstrap-3` は著作者のユーザーネームパッケージです。)が私たちに情報を更新してくれていることを除いては、 手動でBootstrapのCSSとJavaScriptファイルを追加するのと変わりありません。
 
 
-これは、Meteorのコミュニティーメンバーの [Andrew Mao](https://github.com/mizzao) (the “mizzao” in `mizzao:bootstrap-3` は著作者のユーザーネームパッケージです。)が私たちに情報を更新してくれていることを除いては、 Bootstrapを通常通りに、マニュアルでそのCSSとJavaScriptファイルを追加していくのと何ら変わりないです。
+また、[Underscore](http://underscorejs.org/) パッケージも同じく追加しましょう。
+UnderscoreはJavaScriptユーティリティライブラリーです。JavaScriptのデータ構造を操作する段階になったときにとても便利です。
 
 
-私たちがそこに居る間、[Underscore](http://underscorejs.org/) パッケージを同じく追加します。
-UnderscoreはJavaScriptユーティリティライブラリーで、JavaScriptのデーター構造を操作する段階になったときにとても便利です。
-
-
-これを書いている現時点では、`underscore`パッケージはまだMeteorの"公式"パッケージの一部に過ぎず、そのため著者者がいないのです：
+これを書いている時点では、`underscore`パッケージはまだ、Meteorの"公式"パッケージの一部に過ぎません。そのため著者者がいないのです：
 
 ~~~bash
 $ meteor add mizzao:bootstrap-3
 $ meteor add underscore
 ~~~
 
-Bootstrap **3**を使いしていくとうことは念頭に置いておいてください。この本にある数々のスクリーンショットは Boostrap **2**上で実行されている古いバージョンのMicroscopeで撮ったので若干違いが出るかと思います。
+Bootstrap **3**を使っていることを念頭に置いておいてください。この本にある数々のスクリーンショットは Bootstrap **2**上で実行されている古いバージョンのMicroscopeで撮ったので、若干違いが出るかと思います。
 
 
 <%= commit "2-2", "Added bootstrap and underscore packages." %>
 
 <% note do %>
 
-### パッケージのノート
+### パッケージについて
 
-Meteorのパッケージを文脈でつづれというのであれば、明確に挙げれます。Meteorは５種類の基本タイプを兼ね備えています：
+ここでMeteorのパッケージについて、説明しておきましょう。Meteorは５種類の基本タイプを兼ね備えています：
 
- -Meteorのコア部は、異なる**Meteor　platform　packages**に分割されています。Meteorアプリのどれにもに含まれており、それらを全く気にする必要は全くありません。
+- Meteorのコア部は、異なる ** Meteor platform packages**に分割されています。どのMeteorアプリにもに含まれており、あなたはそれらを全く気にする必要は全くありません。
 
-- 通常のMeteorパッケージは、“**isopacks**”として認知されております。同一構造のパッケージ(クライアントとサーバー両方の上で動く事が出来るという意味)、
-`**ファーストーパーティー パッケージ** の'accounts-ui` や `appcache`などはMeteorのコアチーム[come bundled with Meteor](http://docs.meteor.com/#packages)によってメンテナンスされています。
+- 通常のMeteorパッケージは、“**isopacks**”として認知されます。同一構造のパッケージ(クライアントとサーバー両方の上で動く事が出来るという意味)、
+**ファースト・パーティー・パッケージ** の'accounts-ui` や `appcache`などはMeteorのコアチーム[come bundled with Meteor](http://docs.meteor.com/#packages)によってメンテナンスされています。
 
--**サード-パーティーパッケージ**は、単なるisopackで、Meteorのパッケージサーバーをアップロードされている他のユーザーによって開発されました。これは[Atmosphere](http://atmosphere.meteor.com)　もしくは `meteor search`コマンドでブラウズが出来ます。
+- **サード・パーティー・パッケージ**は、単なるisopackです。有志の第三者により開発されたもので、Meteorのパッケージサーバーにアップロードされています、これらは[Atmosphere](http://atmosphere.meteor.com) もしくは `meteor search`コマンドでブラウズが出来ます。
 
 
--**Local packages** はあなたが自分でカスタマイズできるパッケージで、`/packages`のディレクトリーに入れておけます。
+- **Local packages** はあなたが自分でカスタマイズできるパッケージです。`/packages`のディレクトリーに格納できます。
 
-- **NPM packages** (Node.js パッケージモジュール) は Node.js　パッケージのことです。Meteorと一緒にBoxの外では作動し合いませんが、以前のパッケージタイプであれば、使用可能であるかもしれません。
+- **NPM packages** (Node.js パッケージモジュール) は Node.js　パッケージのことです。Meteorと一緒にBoxの外では動作しませんが、以前のパッケージタイプであれば、使用可能かもしれません。
 
 <% end %>
 
 ### Meteorアプリのファイル構成
 
-コーディングを始める前に、私たちはプロジェクトのプロパティーを設定する必要があります。まずは綺麗に構築ができるよう`microscope`ディレクトリを開け`microscope.html`と、 `microscope.js`, そして `microscope.css`を削除します。 
+コーディングを始める前に、プロジェクトのプロパティーを設定する必要があります。まずは綺麗に構築ができるよう`microscope`ディレクトリを開いて`microscope.html`と、 `microscope.js`, そして `microscope.css`を削除します。 
 
 次に、４つのルートディレクトリを `/microscope`: `/client`, `/server`, `/public`, `/lib`, そして `/collections`の内側に作成します。
 
-その次に、空の`main.html` と `main.js` の両方のファイルを`/client`の中に作成します。今のこの作業がもしもアプリを破壊しているのであっても
+その次に、空の`main.html` と `main.js` の両方のファイルを`/client`の中に作成します。もし今のこの作業によってアプリが動作しなくなっても
 心配しないでください。次の章でこれらのファイルを埋めていきます。
 
-このいくつかのディレクトリは特別であることをここで述べさせていただきます。コーディングを実行していくのにあたり、Meteorにはいくつかのルールがあります：
+このいくつかのディレクトリは特別なものであることを強調しておきます。コーディングを実行していくにあたり、Meteorにはいくつかのルールがあります：
 
 - `/server` ディレクトリにあるコードはサーバー上のみ実行します。
 - `/client` ディレクトリにあるコードはクライアントの上のみ実行します。
 - 他のものはみんなクライアントとサーバー上の両方で実行します。
 - フォントや画像などの静的なアセットは`/public`ディレクトリに行きます。
 
-それから、Meteorがあなたのファイルをロードする順番をどう決めているかを知ることはとても役に立ちます。
+それから、Meteorがあなたのファイルをロードする順番をどう決めているかを把握するのはとても大事です。
 - `/lib`にあるファイルは何よりも*先にロードされます。
-- どの`main.*` ファイルは何よりも*後にロードされます。
+- `main.*` ファイルは何よりも*後にロードされます。
 - その他のものはファイル名に基づいてアルファベット順にロードされます。
 
-これらのルールがMeteorにはあるものの、もしあなたが望まないのでれば、このファイル構成の定義は強制されません。なので、この構成は私たちが提案するものであり、決定事項ではありません。
+これらのルールがMeteorにはあるものの、もしあなたが望まないのでれば、このファイル構成の定義は強制されません。この構成は私たちが提案するものであり、決定事項ではありません。
 
-これについてもっと詳しく知りたければ、[official Meteor　docs](http://docs.meteor.com/#structuringyourapp)を一読することをお勧めします。
+このことについてもっと詳しく知りたければ、[official Meteor　docs](http://docs.meteor.com/#structuringyourapp)を一読することをお勧めします。
 
 <% note do %>
 
@@ -161,9 +159,10 @@ Ruby on Railなど、他のフレームワークからMeteorに移って来て�
 
 ### No public?
 
-はい、うそついてました。Microscopeは静的アセットを使わないため`public/` ディレクトリは実際には必要ないのです。しかし、他のほとんどのMEteorアプリは少なくとも何枚かの画像を含んでいるため、私たちはこれを含むのことは必要だと考えました。
+はい、うそついてました。Microscopeは静的アセットを使わないため`public/` ディレクトリは実際には必要ないのです。
+しかし、他のほとんどのMeteorアプリは少なくとも何枚かの画像を含むと思われます。そのため、このディレクトリについて必要だと考えます。
 
-ところで、もう一つ、隠れ`.meteor` ディレクトリについて気づかれたのではないでしょうか。Meteor自身のコードがここに格納されていますので、これに手を加えることは大体悲惨な結果を迎えることになります。事実このディレクトリは全く見る必要のないものです。唯一、使われているMeteorのバージョンと、あなたのスマートパッケージのリストでそれぞれが使われている
+ところで、もう一つ、隠れ`.meteor` ディレクトリについて気づかれた方もいらしゃるのではないでしょうか。Meteor自身のコードがここに格納されています。そのため、これに手を加えることは大体悲惨な結果を迎えることになります。事実、このディレクトリは全く見る必要のないものです。唯一、使われているMeteorのバージョンと、あなたのスマートパッケージのリストでそれぞれが使われている
 '.meteor/packages` と `.meteor/release`ファイルは例外となります。パッケージ追加したりとMeteorのリリースを変えたりするときはこれらのファイルの変更を確認することは役に立ちます。
 
 <% note do %>
@@ -183,7 +182,8 @@ Ruby on Railなど、他のフレームワークからMeteorに移って来て�
 この本はCSSについての本ではありません。ですので、スタイリングについて詳しく述べ、あなたの足を引き止めことを避ける為、最初から全部のスタイルシートを作成しました。
 
 
-CSSはMeteorによってMinify化（ファイル圧縮）を自動でロードするようになっています。そうすれば違う他の静的アセットが `/public`でなく`/client`の中に行きます。それでは今、`client/stylesheets/` ディレクトリをd作成して、この`style.css` ファイルを中に入れてください。
+CSSはMeteorによってMinify化（ファイル圧縮）を自動でロードするようになっています。そうすれば違う他の静的アセットが `/public`でなく`/client`の中に行きます。
+それでは、`client/stylesheets/` ディレクトリを作成して、この`style.css` ファイルを中に入れてください。
 
 ~~~css
 .grid-block, .main, .post, .comments li, .comment-form {
@@ -357,9 +357,10 @@ body {
 
 <% note do %>
 
-###CoffeeScriptのノート
+###CoffeeScriptについて
 
-この本では、純粋なJavaScriptを書いていきます。しかし、一方でCoffeeScriptを好むのであれば、Meteorはカバーします。CoffeeScript パッケージを追加して、準備オッケーです。:
+この本では、純粋なJavaScriptを書いていきます。しかし、一方でCoffeeScriptも
+Meteorはカバーしています。もしCofeeScriptを使用したい場合は CoffeeScript パッケージを追加すればオッケーです。:
 
 `meteor add coffeescript`
 
