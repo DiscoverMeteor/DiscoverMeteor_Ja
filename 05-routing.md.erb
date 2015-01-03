@@ -104,13 +104,13 @@ Iron Router が HTML の <body> タグの中をレンダリングしたものを
 ~~~html
 <template name="layout">
   <div class="container">
-  <header class="navbar">
+  <header class="navbar navbar-default" role="navigation">
     <div class="navbar-inner">
-      <a class="brand" href="/">Microscope</a>
+      <a class="navbar-brand" href="/">Microscope</a>
     </div>
   </header>
   <div id="main" class="row-fluid">
-    {{yield}}
+    {{>yield}}
   </div>
   </div>
 </template>
@@ -174,9 +174,9 @@ Router.map(function() {
 私たちはフレキシビリティを得ることができます。
 
 ~~~html
-<header class="navbar">
+<header class="navbar navbar-default" role="navigation">
   <div class="navbar-inner">
-    <a class="brand" href="{{pathFor 'postsList'}}">Microscope</a>
+    <a class="navbar-brand" href="{{pathFor 'postsList'}}">Microscope</a>
   </div>
 </header>
 
