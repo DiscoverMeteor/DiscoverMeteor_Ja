@@ -3,132 +3,185 @@ title: Latency Compensation
 slug: latency-compensation
 date: 0007/01/02
 number: 7.5
+points: 5
 sidebar: true
+photoUrl: http://www.flickr.com/photos/ikewinski/9473352049/
+photoAuthor: Mike Lewinski
 contents: Understand latency compensation.|Slow your app down and see what's going on.|Learn how Meteor Methods call each other.
 paragraphs: 28
-version: 1.7
 ---
 
-////
+前章では、Meteorの新しいコンセプト**メソッド**を紹介しました。
 
 <%= diagram "latency1", "Without latency compensation", "pull-right" %>
 
-////
+Meteorのメソッドは、十分に構成された方法で複数のコマンドを実行する手段の一つです。ご紹介した例では、新しい投稿が、その投稿者、id及びサーバーの現時刻と紐づくことを確認するために、メソッドを使いました。
 
-////
+しかし、Meteorがメソッドを最も標準的なやり方として実行したなら、ある問題が起こるでしょう。以下のイベントを参照して下さい (注意：以下例のタイムスタンプは、実測でなくイメージです）。
 
-- *+0ms:* ////
-- *+200ms:* ////
-- *+500ms:* ////
+- *+0ms:* ユーザーが送信ボタンを押して、ブラウザがMethodをコール。
+- *+200ms:* サーバーがMongoデータベースにアクセスし、更新。
+- *+500ms:* クライアント側がこの更新を受け取り、UIに反映。
 
-If this were the way Meteor operated, then there'd be a short lag between performing such actions and seeing the results (that lag being more or less noticeable depending on how close you were to the server). We can't have that in a modern web application!
+Meteorがこのような動きで処理をしたら、ユーザーのアクションとそのレスポンスにタイムラグが生じることになるでしょう（このタイムラグは、送信側とサーバーがどこに存在しているかで、気になったり気にならなかったりします）。現代のウェブアプリケーションを作る上で、そのような問題は避けなければなりません。
 
-### Latency Compensation
+### Latency Compensation 遅延補償
 
 <%= diagram "latency2", "With latency compensation", "pull-right" %>
 
-////
+このような問題を避けるために、**遅延補償**というコンセプトを紹介します。まず、`post`メソッドを定義したら、そのファイルは`collections/`フォルダに保存されます。つまり、このコードはサーバーと*クライアントでも*実行することが出来ます。加えて、それらは同時に実行されます。
 
-////
+メソッドを呼ぶと、クライアントはサーバーに向かってコールするわけですが、*同時に*ローカルのコレクションに対しても実行します。先ほど示した流れをもう一度見ますと：
 
-- *+0ms:* ////
-- *+0ms:* ////
-- *+200ms:* ////
-- *+500ms:* ////
+- *+0ms:* ユーザーが送信ボタンを押して、ブラウザがメソッドをコール。
+- *+0ms:*  クライアント側でも、メソッドが呼ばれて、ローカルのコレクションにアクセスし、UIに反映される。
+- *+200ms:*  サーバーがMongoデータベースにアクセスし、更新。
+- *+500ms:*  クライアントがサーバーからの応答を受け取り、クライアント側での変更を元に戻して、サーバー側から来た更新（通常はクライアント側で実施した更新と同様）を反映する。
 
-////
+ユーザーからみて、このような変更は一瞬です。サーバーの応答が少し遅かったら、サーバー側からの応答が来た時点で、気づくかどうか程度の変化が起こります。ここから学べることは、出来るだけ実際的なドキュメントに対して、同時実行させるようにしなければならないということです。
 
-### Observing Latency Compensation
+### Observing Latency Compensation 遅延補償の振る舞い実験
 
-////
+実際の振る舞いを見るために、`post`メソッドに対して、少し変更を加えてみましょう。`Meteor._sleepForMs()` を使って、5秒だけコールを遅らせます（もちろん、*サーバー側だけ*）。
 
-////
+`isServer`を使って、メソッドがクライアント側で実行されているか（stubとして）、あるいはサーバー側か問い合わせます。 [stub](http://docs.meteor.com/#methods_header) は、Meteorがクライアント側で実行される際のメソッドのシミュレーションに相当するもので、「実際の」メソッドはサーバー側で実行されます。
 
-////
+サーバー側で実行されていれば、5秒遅延させ、投稿のタイトルの最後に`(server)`という文字列を追加するようにします。クライアント側であれば、代わりに`(client)`と追加します。
 
 ~~~js
+Posts = new Mongo.Collection('posts');
+
 Meteor.methods({
-  post: function(postAttributes) {
-    // […]
+  postInsert: function(postAttributes) {
+    check(this.userId, String);
+    check(postAttributes, {
+      title: String,
+      url: String
+    });
+
+    if (Meteor.isServer) {
+      postAttributes.title += "(server)";
+      // wait for 5 seconds
+      Meteor._sleepForMs(5000);
+    } else {
+      postAttributes.title += "(client)";
+    }
+
+    var postWithSameLink = Posts.findOne({url: postAttributes.url});
+    if (postWithSameLink) {
+      return {
+        postExists: true,
+        _id: postWithSameLink._id
+      }
+    }
     
-    // pick out the whitelisted keys
-    var post = _.extend(_.pick(postAttributes, 'url', 'message'), {
-      title: postAttributes.title + (this.isSimulation ? '(client)' : '(server)'),
+    var user = Meteor.user();
+    var post = _.extend(postAttributes, {
       userId: user._id, 
       author: user.username, 
-      submitted: new Date().getTime()
+      submitted: new Date()
     });
-    
-    // wait for 5 seconds
-    if (! this.isSimulation) {
-      var Future = Npm.require('fibers/future');
-      var future = new Future();
-      Meteor.setTimeout(function() {
-        future.return();
-      }, 5 * 1000);
-      future.wait();
-    }
     
     var postId = Posts.insert(post);
     
-    return postId;
+    return {
+      _id: postId
+    };
   }
 });
 ~~~
 <%= caption "collections/posts.js" %>
-<%= highlight "6, 7, 13~22" %>
+<%= highlight "11~17" %>
 
-////
+さて、ここまでですと、このデモは十分に機能しません。これだけでは、投稿の送信ボタン押下から5秒間そのままで止まって、そして投稿リストにリダイレクトされるだけで、それ以外は何も起こりません。
 
-////
-
-////
+何故でしょうか？投稿送信イベントハンドラーを見てみましょう。
 
 ~~~js
 Template.postSubmit.events({
-  'submit form': function(event) {
-    event.preventDefault();
+  'submit form': function(e) {
+    e.preventDefault();
     
     var post = {
-      url: $(event.target).find('[name=url]').val(),
-      title: $(event.target).find('[name=title]').val(),
-      message: $(event.target).find('[name=message]').val()
-    }
+      url: $(e.target).find('[name=url]').val(),
+      title: $(e.target).find('[name=title]').val()
+    };
     
-    Meteor.call('post', post, function(error, id) {
+    Meteor.call('postInsert', post, function(error, result) {
+      // display the error to the user and abort
       if (error)
         return alert(error.reason);
+      
+      // show this result but route anyway
+      if (result.postExists)
+        alert('This link has already been posted');
+    
+      Router.go('postPage', {_id: result._id});  
     });
-    Router.go('postsList');
   }
 });
 ~~~
-<%= caption "client/views/posts/post_submit.js" %>
-<%= highlight "15" %>
+<%= caption "client/templates/posts/post_submit.js" %>
+
+以前、コールバックの途中に`Router.go()`を定義しました。つまり、フォームは、リダイレクトするまえに、このメソッドが正常終了するまで待つということになっていました。
+
+これは正しいやり方と言えます。つまり、送信された内容が有効かどうかを判断する前に、リダイレクトは出来ないということです。もしそれが出来たとしたら、一度リダイレクトして、また元のページに戻って、送信内容を直すような動きを、ほんの数秒の間に行うという、非常に分かりにくいものになってしまいます。 
+
+しかしここでは実験的に、アクションに対する応答を即座に見たいと思います。そこでルーティングを変更し、`postsList`にリダイレクトするようにします（メソッド外から`_id`が取得できないため、postに直接ルートすることは出来ません）。どうなるでしょうか。
+
+~~~js
+Template.postSubmit.events({
+  'submit form': function(e) {
+    e.preventDefault();
+    
+    var post = {
+      url: $(e.target).find('[name=url]').val(),
+      title: $(e.target).find('[name=title]').val()
+    };
+    
+    Meteor.call('postInsert', post, function(error, result) {
+      // display the error to the user and abort
+      if (error)
+        return alert(error.reason);
+      
+      // show this result but route anyway
+      if (result.postExists)
+        alert('This link has already been posted');
+    });
+
+    Router.go('postsList');  
+
+  }
+});
+~~~
+<%= caption "client/templates/posts/post_submit.js" %>
+<%= highlight "20" %>
 
 <%= scommit "7-5-1", "Demonstrate the order that posts appear using a sleep." %>
 
-////
+この状態で投稿を送信したら、ようやく遅延補償の動きが見えてきます。まず、投稿タイトルに`(client)`が追加されます（リストの最初の投稿がそうです。GitHubにリンクされます）”
 
 <%= screenshot "s5-1", "Our post as first stored in the client collection" %>
 
-////
+その5秒後、サーバーからの応答が反映されます。
 
 <%= screenshot "s5-2", "Our post once the client receives the update from the server collection" %>
 
-### Client Collection Methods
+### Client Collection Methods クライアント側コレクションの操作
 
-////
+これらの理解を通じて、これらのメソッドが複雑なものに思えてきたかもしれません。実際のところ、大変シンプルです。これまで、コレクション変更のための、3つのシンプルなメソッドを見てきました：`insert`、`update`、そして`remove`です。
 
-////
+サーバー側データに関する`'posts'`を定義するとき、それは暗黙的に`posts/insert`、`posts/update`、そして`posts/delete`を定義していることになります。言い換えれば、`Posts.insert()`をクライアント側で呼び出したなら、遅延補償されたメソッドを呼び出したことになり、以下2つのことをさせているということになります。
 
-1. ////
-2. ////
+1. `allow`と`deny`のコールバックを呼び出して、コレクションが変更できるかどうかチェック（しかしシミュレーション処理内で発生する必要はない）
+2. 実際の変更を、サーバー側データベースに対して行う。
   
-### Methods Calling Methods
+### Methods Calling Methods メソッド内のメソッド呼び出し
 
-////
- 
-////
+さて、お気づきの方もいらっしゃるかもしれませんが、この`post`メソッドは他のメソッド（`posts/insert`）を呼び出し、データ挿入を実現しています。これはどのように動くのでしょうか？
 
-////
+クライアント側のメソッドであるシミュレーションが動くと、`insert`のシミュレーションが動きます（クライアント側のコレクションにもデータ挿入されます）。しかしこのとき、サーバー側の`insert`は*コールされません*。それは、*サーバー側の* `post` がコールするはずだからです。
+
+したがって、サーバー側の`post`メソッドが`insert`をコールしたら、クライアント側のシミュレーションに関しては気にする必要なく、データ挿入がスムースに実施されることになります。
+
+それではこれまで通り、次の章に進む前に、上記の変更を元に戻して、次に進んで下さい。
