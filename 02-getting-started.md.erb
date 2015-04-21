@@ -3,7 +3,10 @@ title: Getting Started
 slug: getting-started
 date: 0002/01/01
 number: 2
-コンテンツ: MeteorとMeteoriteをインストールする。|５種類のMeteorパッケージの演習|Meteorアプリにファイルを構築する。
+points: 1
+photoUrl: http://www.flickr.com/photos/ikewinski/9511230392/
+photoAuthor: Mike Lewinski
+contents: Meteorをインストールする。|５種類のMeteorパッケージについて学ぶ。|Meteorアプリケーションのファイル構成をセットアップする。
 paragraphs: 49
 version: 1.7
 ---
@@ -28,7 +31,7 @@ $ curl https://install.meteor.com | sh
 そして、短いガイドを[a short guide](https://www.discovermeteor.com/blog/meteor-nitrous)に描いたのでセットアップするのに便利だと思います。
 
 <% end %>
- 
+
 ### 簡単なアプリの作成。
 
 Meteorをインストールしたので、簡単なアプリを作成してみましょう。まず,
@@ -41,9 +44,9 @@ $ meteor create microscope
 このコマンドはMeteorをダウンロードして、基本的な物をセットアップしてくれ、Meteorプロジェクトの準備をしてくれます。これが終わったら、`microscope/`ディレクトリーをみて、次の項目が構成されているか確認してください。
 
 ~~~bash
-microscope.css  
-microscope.html 
-microscope.js   
+microscope.css
+microscope.html
+microscope.js
 ~~~
 
 Meteorがあなたの為に作ったアプリは簡単なパターンのお手本を示すボイラープレートアプリケーションです。
@@ -55,126 +58,114 @@ $ cd microscope
 $ meteor
 ~~~
 
-次にあなたの画面のブラウザーを`http://localhost:3000/` (もしくは `http://0.0.0.0:3000/`と同様にします。) に合わせてください、そしてこのような物を見てください。
+次にブラウザで`http://localhost:3000/` (もしくは、`http://0.0.0.0:3000/`でも同じです)にアクセスすると、以下の様な画面が表示されるはずです。
 
 
 <%= screenshot "2-1", "Meteor's Hello World." %>
 
 <%= commit "2-1", "Created basic microscope project." %>
 
-おめでとうございます！初めてMeteorでアプリを実行する事ができました。ところで、アプリを一旦止めて、アプリが起動しているターミナルタブに持ってきて、`ctrl+c`を押してください。
+おめでとうございます！初めてMeteorでアプリを実行する事ができました。ところで、アプリを一旦止めるには、アプリが起動しているターミナルタブで`ctrl+c`を押してください。
 
-そして、Gitを使っているなら、これは`git init`で初めてリポするいいタイミングですよ。
+また、Gitを使っているなら`git init`でリポジトリを初期化する良いタイミングです。
 
 
 <% note do %>
 
-###バイバイMeteorite
+### バイバイMeteorite
 
-MeteorがMeteoriteと呼ばれる外部の管理パッケージに頼っていた時期がありました。Meteor Ver0.9.0以来、Meteor自体に吸収されてからにMeteoriteはもう必要なくなりました。
+MeteorがMeteoriteと呼ばれる外部のパッケージマネージャーに頼っていた時期がありました。Meteor Ver0.9.0以来、Meteor自体に吸収されてからにMeteoriteはもう必要なくなりました。
 
 
-もしあなたがこの本、もしくはMeteor関連のマテリアルをブラウズしている間に、Meteoriteの `mrt`のコマンドラインのユーティリティに関連するものに出くわしたら、
-安全に通常の`meteor`に置き換えればいいです。
-So if you encounter any references to Meteorite's `mrt` command line utility throughout this book or while browsing Meteor-related material, you can safely replace them by the usual `meteor`. 
+もしあなたがこの本、もしくはMeteor関連のマテリアルをブラウズしている間に、Meteoriteの `mrt`のコマンドラインのユーティリティに関連するものに出くわしたら、`meteor`に置き換えるだけで問題ありません。
 
 <% end %>
 
 ### パッケージを追加する
 
-Meteorのパッケージシステムを[Bootstrap](http://getbootstrap.com/)のフレームワークを私たちのプロジェクトに追加して使えるようになりました。
+では、Meteorのパッケージマネージャーを使って、プロジェクトに[Bootstrap](http://getbootstrap.com/)を追加しましょう。
 
+通常通り手動でCSSとJavaScriptファイルを追加する方法と何も変わりませんが、パッケージマネージャーでインストールすることで、メンテナにパッケージの更新を任せる事ができます。
 
-これは、Meteorのコミュニティーメンバーの [Andrew Mao](https://github.com/mizzao) (the “mizzao” in `mizzao:bootstrap-3` は著作者のユーザーネームパッケージです。)が私たちに情報を更新してくれていることを除いては、 Bootstrapを通常通りに、マニュアルでそのCSSとJavaScriptファイルを追加していくのと何ら変わりないです。
+続いて、[Underscore](http://underscorejs.org/)パッケージも追加します。UnderscoreはJavaScriptのユーティリティライブラリでJavaScriptのデータ構造を操作するのにとても便利なライブラリです。
 
+`Bootstrap`パッケージは`twbs`ユーザによってメンテナンスされていて、パッケージ名は`twbs:bootstrap`になります。
 
-私たちがそこに居る間、[Underscore](http://underscorejs.org/) パッケージを同じく追加します。
-UnderscoreはJavaScriptユーティリティライブラリーで、JavaScriptのデーター構造を操作する段階になったときにとても便利です。
-
-
-これを書いている現時点では、`underscore`パッケージはまだMeteorの"公式"パッケージの一部に過ぎず、そのため著者者がいないのです：
+一方で、`underscore`パッケージはMeteorの「公式」パッケージの一部で、フレームワークにバンドルされているため、作者は記載されません。
 
 ~~~bash
-$ meteor add mizzao:bootstrap-3
+$ meteor add twbs:bootstrap
 $ meteor add underscore
 ~~~
 
-Bootstrap **3**を使いしていくとうことは念頭に置いておいてください。この本にある数々のスクリーンショットは Boostrap **2**上で実行されている古いバージョンのMicroscopeで撮ったので若干違いが出るかと思います。
-
+ここでは、Bootstrap**3**を追加していることに注意してください。本書のスクリーンショットの中には、Bootstrap**2**で構築された古いMicroscopeのものも含まれています。そのため、見た目が少し異なるかもしれません。
 
 <%= commit "2-2", "Added bootstrap and underscore packages." %>
 
 <% note do %>
 
-### パッケージのノート
+### パッケージについて
 
-Meteorのパッケージを文脈でつづれというのであれば、明確に挙げれます。Meteorは５種類の基本タイプを兼ね備えています：
+Meteorにおけるパッケージについて、具体的に説明しておきましょう。Meteorのパッケージには5つの基本型があります。
 
- -Meteorのコア部は、異なる**Meteor　platform　packages**に分割されています。Meteorアプリのどれにもに含まれており、それらを全く気にする必要は全くありません。
-
-- 通常のMeteorパッケージは、“**isopacks**”として認知されております。同一構造のパッケージ(クライアントとサーバー両方の上で動く事が出来るという意味)、
-`**ファーストーパーティー パッケージ** の'accounts-ui` や `appcache`などはMeteorのコアチーム[come bundled with Meteor](http://docs.meteor.com/#packages)によってメンテナンスされています。
-
--**サード-パーティーパッケージ**は、単なるisopackで、Meteorのパッケージサーバーをアップロードされている他のユーザーによって開発されました。これは[Atmosphere](http://atmosphere.meteor.com)　もしくは `meteor search`コマンドでブラウズが出来ます。
-
-
--**Local packages** はあなたが自分でカスタマイズできるパッケージで、`/packages`のディレクトリーに入れておけます。
-
-- **NPM packages** (Node.js パッケージモジュール) は Node.js　パッケージのことです。Meteorと一緒にBoxの外では作動し合いませんが、以前のパッケージタイプであれば、使用可能であるかもしれません。
+- Meteorのコア自体は"**Meteor platform packages**"という単位に分割されています。これらのパッケージは全てのMeteorアプリケーションに含まれ、通常は開発者が気にする必要はありません。
+- 通常のMeteorパッケージは"**isopacks**"、またはIsomorphicパッケージ（クライアントとサーバの両方で動作するという意味です）と呼ばれています。`accounts-ui`や`appcache`のような**First-party packages**はMeteorのコアチームによってメンテナンスされていて、[Meteorにバンドルされています](http://docs.meteor.com/#packages)。
+- **Third-party packages**は、単なるisopackで、他のユーザーによって開発され、Meteorのパッケージサーバーにアップロードされているパッケージです。これらのパッケージは[Atmosphere](http://atmosphere.meteor.com)もしくは `meteor search`コマンドで検索することができます。
+- **Local packages** はあなたが自分でカスタマイズできるパッケージで、`/packages`のディレクトリに入れておけます。
+- **NPM packages** (Node.jsパッケージモジュール) は Node.jsパッケージのことです。Meteorアプリケーションでそのまま利用することはできませんが、上記のタイプのパッケージであれば、*使用できる*かもしれません。
 
 <% end %>
 
-### Meteorアプリのファイル構成
+### Meteorアプリケーションのファイル構成
 
-コーディングを始める前に、私たちはプロジェクトのプロパティーを設定する必要があります。まずは綺麗に構築ができるよう`microscope`ディレクトリを開け`microscope.html`と、 `microscope.js`, そして `microscope.css`を削除します。 
+コーディングを始める前に、私たちはプロジェクトを適切に設定する必要があります。まずは綺麗に構築ができるよう`microscope`ディレクトリ内の`microscope.html`と、 `microscope.js`, そして `microscope.css`を削除します。
 
-次に、４つのルートディレクトリを `/microscope`: `/client`, `/server`, `/public`, `/lib`, そして `/collections`の内側に作成します。
+次に、 `/microscope`以下に次の4つのルートディレクトリを作ります。: `/client`, `/server`, `/public`, `/lib`
 
-その次に、空の`main.html` と `main.js` の両方のファイルを`/client`の中に作成します。今のこの作業がもしもアプリを破壊しているのであっても
-心配しないでください。次の章でこれらのファイルを埋めていきます。
+その次に、空の`main.html`と`main.js`ファイルを`/client`の中に作成します。この作業をすることでアプリケーションが動作しなくなっても気にしないでください。次の章でこれらのファイルにコードを書いていきます。
 
-このいくつかのディレクトリは特別であることをここで述べさせていただきます。コーディングを実行していくのにあたり、Meteorにはいくつかのルールがあります：
+このいくつかのディレクトリは特別であることをここで述べさせていただきます。コーディングしていくにあたり、Meteorにはいくつかのルールがあります：
 
-- `/server` ディレクトリにあるコードはサーバー上のみ実行します。
-- `/client` ディレクトリにあるコードはクライアントの上のみ実行します。
-- 他のものはみんなクライアントとサーバー上の両方で実行します。
-- フォントや画像などの静的なアセットは`/public`ディレクトリに行きます。
+- `/server`ディレクトリにあるコードはサーバー上でのみ実行されます。
+- `/client`ディレクトリにあるコードはクライアント上でのみ実行されます。
+- 他のものは全てクライアントとサーバーの両方で実行されます。
+- フォントや画像などの静的なアセットは`/public`ディレクトリに置きます。
 
-それから、Meteorがあなたのファイルをロードする順番をどう決めているかを知ることはとても役に立ちます。
-- `/lib`にあるファイルは何よりも*先にロードされます。
-- どの`main.*` ファイルは何よりも*後にロードされます。
-- その他のものはファイル名に基づいてアルファベット順にロードされます。
+それから、Meteorがファイルをロードする順番をどう決めているかを知ることはとても役に立ちます。
 
-これらのルールがMeteorにはあるものの、もしあなたが望まないのでれば、このファイル構成の定義は強制されません。なので、この構成は私たちが提案するものであり、決定事項ではありません。
+- `/lib`にあるファイルは何よりも*先に*ロードされます。
+- どの`main.*` ファイルは何よりも*後に*ロードされます。
+- その他のものはファイル名のアルファベット順にロードされます。
 
-これについてもっと詳しく知りたければ、[official Meteor　docs](http://docs.meteor.com/#structuringyourapp)を一読することをお勧めします。
+Meteorにはこれらのルールがあるものの、もしあなたが望まないのでれば、このファイル構成の定義は強制されません。そのため、この構成は私たちが提案するものであり、決められたルールではありません。
+
+これについてもっと詳しく知りたければ、[Meteorの公式ドキュメント](http://docs.meteor.com/#structuringyourapp)を一読することをお勧めします。
 
 <% note do %>
 
-###MeteorはMVC?
+### MeteorはMVC?
 
-Ruby on Railなど、他のフレームワークからMeteorに移って来ているなら人、Meteorアプリは MVC (Model View Controller)パターンを採用しているのかと疑問に思っているかもしれません。 
+Ruby on Railなど、他のフレームワークからMeteorに移って来ている人なら、MeteorアプリはMVC(Model View Controller)パターンを採用しているのかと疑問に思っているかもしれません。
 
-簡単に言うと答えはノーです。Railと違ってMeteorはあなたのアプリに対して定義づけされた構成を課してはいません。ですので、この本の中ではアクロニム（頭文字）について深く考えなくても、自分が一番理解ができるよう簡単にコードをレイアウトします。
+簡単に言うと答えはノーです。Railsと違って、Meteorはあなたのアプリに対して決まった構成を押し付けることはしません。ですので、本書ではアクロニム（頭文字）について深く考えずに、私達が理解しやすいようにコードをレイアウトします。
 
 <% end %>
 
-### No public?
+### Publicディレクトリは?
 
-はい、うそついてました。Microscopeは静的アセットを使わないため`public/` ディレクトリは実際には必要ないのです。しかし、他のほとんどのMEteorアプリは少なくとも何枚かの画像を含んでいるため、私たちはこれを含むのことは必要だと考えました。
+はい、うそをついてました。Microscopeは静的アセットを使わないため`public/`ディレクトリは実際には必要ないのです。しかし、他のほとんどのMeteorアプリケーションでは少なくとも何枚かの画像を含んでいるため、私たちはこれを含むことは必要だと考えました。
 
-ところで、もう一つ、隠れ`.meteor` ディレクトリについて気づかれたのではないでしょうか。Meteor自身のコードがここに格納されていますので、これに手を加えることは大体悲惨な結果を迎えることになります。事実このディレクトリは全く見る必要のないものです。唯一、使われているMeteorのバージョンと、あなたのスマートパッケージのリストでそれぞれが使われている
-'.meteor/packages` と `.meteor/release`ファイルは例外となります。パッケージ追加したりとMeteorのリリースを変えたりするときはこれらのファイルの変更を確認することは役に立ちます。
+ところで、もう一つ、`.meteor`という隠しディレクトリについて気づかれたのではないでしょうか。Meteor自身のコードがここに格納されていますので、これに手を加えることは大体悲惨な結果を迎えることになります。事実、このディレクトリは全く見る必要のないものです。ただし、例外として`.meteor/packages`ファイルと`.meteor/release`ファイルには、それぞれMeteorのバージョンと、あなたのスマートパッケージのリストが記述されています。パッケージ追加したり、Meteorのバージョンを変えた場合には、これらのファイルの変更を確認することは役に立ちます。
 
 <% note do %>
 
-### アンダーバー 対 キャメル方式
+### アンダースコア 対 キャメルケース
 
-古めかしいアンダーバー(`my_variable`) 対 キャメル方式(`myVariable`)の論争について一つ言及するとしたら、常に同じ様式を取っていればどちらを使おうと全く問題ありません。
+古めかしいアンダースコア(`my_variable`) 対 キャメルケース(`myVariable`)の論争について一つ言及するとしたら、常に同じ様式を取っていればどちらを使おうと全く問題ありません。
 
-この本では、JavaScriptで通常使われている様式のキャメル方式を使っています。(ところで、表記はJavaScriptですよ、java_scriptではないですよ!). 
+本書では、JavaScriptで通常使われている様式であるキャメルケースを使っています。(ところで、表記はJavaScriptですよ、java_scriptではないですよ!).
 
-ここでの唯一のルールは、ファイル名はアンダーバー(`my_file.js`)で表記し、CSSのクラスはハイフン(`.my-class`)で表記するという点です。理由としては、アンダーバーはファイルシステムで一番採用されている様式であり、CSSシンタックスではすでにハイフン(`font-family`, `text-align`, etc.)が取り入れられているからです。
+唯一の例外は、ファイル名はアンダースコア(`my_file.js`)で表記し、CSSのクラスはハイフン(`.my-class`)で表記するという点です。理由としては、アンダースコアはファイルシステムで一番採用されている様式であり、CSSシンタックスではすでにハイフン(`font-family`, `text-align`, etc.)が取り入れられているからです。
 
 <% end %>
 
@@ -182,16 +173,11 @@ Ruby on Railなど、他のフレームワークからMeteorに移って来て�
 
 この本はCSSについての本ではありません。ですので、スタイリングについて詳しく述べ、あなたの足を引き止めことを避ける為、最初から全部のスタイルシートを作成しました。
 
-
-CSSはMeteorによってMinify化（ファイル圧縮）を自動でロードするようになっています。そうすれば違う他の静的アセットが `/public`でなく`/client`の中に行きます。それでは今、`client/stylesheets/` ディレクトリをd作成して、この`style.css` ファイルを中に入れてください。
+CSSはMeteorによって自動でMinify（ファイル圧縮）、ロードするようになっています。そのため、他の静的アセットとは異なり、`/public`でなく`/client`の中に配置します。それでは、`client/stylesheets/` ディレクトリを作成して、以下の`style.css` ファイルを記述してください。
 
 ~~~css
 .grid-block, .main, .post, .comments li, .comment-form {
   background: #fff;
-  -webkit-border-radius: 3px;
-  -moz-border-radius: 3px;
-  -ms-border-radius: 3px;
-  -o-border-radius: 3px;
   border-radius: 3px;
   padding: 10px;
   margin-bottom: 10px;
@@ -203,14 +189,19 @@ body {
   background: #eee;
   color: #666666; }
 
+#main {
+  position: relative;
+}
+.page {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+}
+
 .navbar {
   margin-bottom: 10px; }
   /* line 32, ../sass/style.scss */
   .navbar .navbar-inner {
-    -webkit-border-radius: 0px 0px 3px 3px;
-    -moz-border-radius: 0px 0px 3px 3px;
-    -ms-border-radius: 0px 0px 3px 3px;
-    -o-border-radius: 0px 0px 3px 3px;
     border-radius: 0px 0px 3px 3px; }
 
 #spinner {
@@ -236,7 +227,6 @@ body {
     transition: none; }
   .post.animate{
     -webkit-transition: all 300ms 0ms;
-    -webkit-transition-delay: ease-in;
     -moz-transition: all 300ms 0ms ease-in;
     -o-transition: all 300ms 0ms ease-in;
     transition: all 300ms 0ms ease-in; }
@@ -289,10 +279,6 @@ body {
 
 .load-more {
   display: block;
-  -webkit-border-radius: 3px;
-  -moz-border-radius: 3px;
-  -ms-border-radius: 3px;
-  -o-border-radius: 3px;
   border-radius: 3px;
   background: rgba(0, 0, 0, 0.05);
   text-align: center;
@@ -308,10 +294,10 @@ body {
   height: 100px;
 }
 
-.not-found{
+.jumbotron{
   text-align: center;
 }
-.not-found h2{
+.jumbotron h2{
   font-size: 60px;
   font-weight: 100;
 }
@@ -357,9 +343,9 @@ body {
 
 <% note do %>
 
-###CoffeeScriptのノート
+### CoffeeScriptについて
 
-この本では、純粋なJavaScriptを書いていきます。しかし、一方でCoffeeScriptを好むのであれば、Meteorはカバーします。CoffeeScript パッケージを追加して、準備オッケーです。:
+本書では、純粋なJavaScriptを書いていきますが、MeteorはCoffeeScriptを利用することもできます。CoffeeScript パッケージを追加して、準備オッケーです。:
 
 `meteor add coffeescript`
 
