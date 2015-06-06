@@ -99,7 +99,7 @@ $ meteor add mizzao:bootstrap-3
 $ meteor add underscore
 ~~~
 
-Bootstrap **3**を使いしていくとうことは念頭に置いておいてください。この本にある数々のスクリーンショットは Boostrap **2**上で実行されている古いバージョンのMicroscopeで撮ったので若干違いが出るかと思います。
+Bootstrap **3**を使うことを念頭に置いておいてください。この本にある数々のスクリーンショットは Boostrap **2**上で実行されている古いバージョンのMicroscopeで撮ったので若干違いが出るかと思います。
 
 
 <%= commit "2-2", "Added bootstrap and underscore packages." %>
@@ -130,7 +130,7 @@ Meteorのパッケージを文脈でつづれというのであれば、明確�
 
 次に、４つのルートディレクトリ `/client`, `/server`, `/public`, そして`/lib` を `/microscope` の内側に作成します。
 
-その次に、空の`main.html` と `main.js` の両方のファイルを`/client`の中に作成します。今のこの作業がもしもアプリを破壊しているのであっても
+その次に、空の`main.html` と `main.js` の両方のファイルを`/client`の中に作成します。今のこの作業がもしもアプリを破壊していても
 心配しないでください。次の章でこれらのファイルを埋めていきます。
 
 このいくつかのディレクトリは特別であることをここで述べさせていただきます。コーディングを実行していくのにあたり、Meteorにはいくつかのルールがあります：
@@ -183,7 +183,7 @@ Ruby on Railなど、他のフレームワークからMeteorに移って来て�
 この本はCSSについての本ではありません。ですので、スタイリングについて詳しく述べ、あなたの足を引き止めことを避ける為、最初から全部のスタイルシートを作成しました。
 
 
-CSSはMeteorによってMinify化（ファイル圧縮）を自動でロードするようになっています。そうすれば違う他の静的アセットが `/public`でなく`/client`の中に行きます。それでは今、`client/stylesheets/` ディレクトリをd作成して、この`style.css` ファイルを中に入れてください。
+CSSはMeteorによってMinify化（ファイル圧縮）を自動でロードするようになっています。そうすれば違う他の静的アセットが `/public`でなく`/client`の中に行きます。それでは今、`client/stylesheets/` ディレクトリを作成して、この`style.css` ファイルを中に入れてください。
 
 ~~~css
 .grid-block, .main, .post, .comments li, .comment-form {
